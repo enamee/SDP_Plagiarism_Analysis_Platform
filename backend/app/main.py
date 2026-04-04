@@ -1,12 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.upload import router as upload_router
+
 app = FastAPI(
     title="Explainable Plagiarism Analysis Platform API",
     version="0.1.0"
 )
 
-# Allow frontend to call backend during development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -15,11 +16,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(upload_router)
+
+
 @app.get("/")
 def root():
     return {
         "message": "Backend is running"
     }
+
 
 @app.get("/health")
 def health():
