@@ -26,6 +26,17 @@ export async function getDocuments() {
  return data
 }
 
+export async function getDocumentById(documentId) {
+ const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}`)
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Failed to fetch document details.')
+ }
+
+ return data
+}
+
 export async function compareDocuments(documentAId, documentBId) {
  const response = await fetch(`${API_BASE_URL}/api/compare/documents`, {
    method: 'POST',

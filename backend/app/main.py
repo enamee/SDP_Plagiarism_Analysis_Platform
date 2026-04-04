@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.compare import router as compare_router
+from app.api.routes.document_detail import router as document_detail_router
 from app.api.routes.document_list import router as document_list_router
 from app.api.routes.upload import router as upload_router
 from app.core.database import Base, engine
@@ -24,6 +25,7 @@ app.add_middleware(
 
 app.include_router(upload_router)
 app.include_router(document_list_router)
+app.include_router(document_detail_router)
 app.include_router(compare_router)
 
 

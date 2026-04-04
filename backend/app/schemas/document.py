@@ -14,3 +14,21 @@ class DocumentListItem(BaseModel):
    extracted_char_count: int
    extraction_warning: str | None
    created_at: datetime
+
+
+class DocumentDetail(BaseModel):
+   model_config = ConfigDict(from_attributes=True)
+
+   id: int
+   title: str
+   source_type: str
+   original_filename: str | None
+   stored_filename: str
+   extracted_filename: str
+   extension: str
+   content_type: str
+   size_bytes: int
+   extracted_char_count: int
+   extracted_text: str
+   extraction_warning: str | None
+   created_at: datetime

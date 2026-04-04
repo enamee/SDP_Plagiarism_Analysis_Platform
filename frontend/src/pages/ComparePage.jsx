@@ -1,5 +1,63 @@
-import { useEffect, useState } from 'react'
-import { compareDocuments, getDocuments } from '../services/documentService'
+import { useEffect, useMemo, useState } from 'react'
+import {
+ compareDocuments,
+ getDocumentById,
+ getDocuments,
+} from '../services/documentService'
+
+function splitTextIntoDisplaySentences(text) {
+ if (!text) return []
+
+ return text
+   .split(/(?<=[.!?])\s+/)
+   .map((sentence) => sentence.trim())
+   .filter(Boolean)
+}
+
+function normalizeSentence(sentence) {
+ return sentence
+   .toLowerCase()
+   .replace(/[^a-z0-9\s]/g, ' ')
+   .replace(/\s+/g, ' ')
+   .trim()
+}
+
+function HighlightedTextPanel({ title, text, matchedSentences }) {
+ const sentenceList = useMemo(() => splitTextIntoDisplaySentences(text), [text])
+
+ const matchedSet = useMemo(() => {
+   return new Set(matchedSentences.map((sentence) => normalizeSentence(sentence)))
+ }, [matchedSentences])
+
+ return (
+   <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+     <h4 className="text-lg font-semibold mb-4">{title}</h4>
+
+     <div className="space-y-2 max-h-[500px] overflow-y-auto">
+       {sentenceList.length === 0 ? (
+         <p className="text-slate-500">No extracted text available.</p>
+       ) : (
+         sentenceList.map((sentence, index) => {
+           const isMatched = matchedSet.has(normalizeSentence(sentence))
+
+           return (
+             <span
+               key={index}
+               className={`inline ${
+                 isMatched
+                   ? 'bg-yellow-200 rounded px-1'
+                   : ''
+               }`}
+             >
+               {sentence}{' '}
+             </span>
+           )
+         })
+       )}
+     </div>
+   </div>
+ )
+}
 
 function ComparePage() {
  const [documents, setDocuments] = useState([])
@@ -9,6 +67,8 @@ function ComparePage() {
  const [comparing, setComparing] = useState(false)
  const [error, setError] = useState('')
  const [result, setResult] = useState(null)
+ const [documentADetail, setDocumentADetail] = useState(null)
+ const [documentBDetail, setDocumentBDetail] = useState(null)
 
  useEffect(() => {
    async function loadDocuments() {
@@ -30,6 +90,8 @@ function ComparePage() {
    event.preventDefault()
    setError('')
    setResult(null)
+   setDocumentADetail(null)
+   setDocumentBDetail(null)
 
    if (!documentAId || !documentBId) {
      setError('Please select both documents.')
@@ -43,14 +105,30 @@ function ComparePage() {
 
    try {
      setComparing(true)
-     const data = await compareDocuments(documentAId, documentBId)
-     setResult(data)
+
+     const [comparisonResult, docA, docB] = await Promise.all([
+       compareDocuments(documentAId, documentBId),
+       getDocumentById(documentAId),
+       getDocumentById(documentBId),
+     ])
+
+     setResult(comparisonResult)
+     setDocumentADetail(docA)
+     setDocumentBDetail(docB)
    } catch (err) {
      setError(err.message)
    } finally {
      setComparing(false)
    }
  }
+
+ const matchedSentencesA = result
+   ? result.top_matches.map((match) => match.sentence_a)
+   : []
+
+ const matchedSentencesB = result
+   ? result.top_matches.map((match) => match.sentence_b)
+   : []
 
  return (
    <div className="space-y-6">
@@ -120,7 +198,7 @@ function ComparePage() {
      </div>
 
      {result && (
-       <div className="space-y-6">
+       <>
          <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
            <h3 className="text-xl font-semibold mb-4">Comparison Result</h3>
 
@@ -194,7 +272,21 @@ function ComparePage() {
              </div>
            )}
          </div>
-       </div>
+
+         <div className="grid lg:grid-cols-2 gap-6">
+           <HighlightedTextPanel
+             title={`Highlighted Text - ${result.document_a_title}`}
+             text={documentADetail?.extracted_text || ''}
+             matchedSentences={matchedSentencesA}
+           />
+
+           <HighlightedTextPanel
+             title={`Highlighted Text - ${result.document_b_title}`}
+             text={documentBDetail?.extracted_text || ''}
+             matchedSentences={matchedSentencesB}
+           />
+         </div>
+       </>
      )}
    </div>
  )
