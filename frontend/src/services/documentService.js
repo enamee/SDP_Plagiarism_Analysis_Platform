@@ -71,3 +71,25 @@ export async function runCorpusCheck(documentId, topK = 5) {
 
  return data
 }
+
+export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs = 20) {
+ const response = await fetch(`${API_BASE_URL}/api/batch-check`, {
+   method: 'POST',
+   headers: {
+     'Content-Type': 'application/json',
+   },
+   body: JSON.stringify({
+     document_ids: documentIds.map((id) => Number(id)),
+     min_similarity: Number(minSimilarity),
+     max_pairs: Number(maxPairs),
+   }),
+ })
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Batch check failed.')
+ }
+
+ return data
+}
