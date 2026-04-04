@@ -57,3 +57,17 @@ export async function compareDocuments(documentAId, documentBId) {
 
  return data
 }
+
+export async function runCorpusCheck(documentId, topK = 5) {
+ const response = await fetch(
+   `${API_BASE_URL}/api/corpus-check/${documentId}?top_k=${Number(topK)}`
+ )
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Corpus check failed.')
+ }
+
+ return data
+}
