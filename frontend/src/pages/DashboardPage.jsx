@@ -1,15 +1,33 @@
 function DashboardPage() {
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">
-        Explainable Plagiarism Analysis Platform
-      </h1>
-      <p className="text-gray-700 mb-2">
-        Commit 1 complete: frontend is running.
+    <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
+      <h2 className="text-2xl font-bold mb-3">Dashboard</h2>
+      <p className="text-slate-700 mb-4">
+        Welcome to the Explainable Plagiarism Analysis Platform.
       </p>
-      <p className="text-gray-700">
-        Later this dashboard will show upload stats, recent checks, and reports.
-      </p>
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
+          <h3 className="font-semibold mb-2">Documents</h3>
+          <p className="text-sm text-slate-600">
+            Later this card will show total uploaded documents.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
+          <h3 className="font-semibold mb-2">Recent Checks</h3>
+          <p className="text-sm text-slate-600">
+            Later this card will show recent plagiarism checks.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
+          <h3 className="font-semibold mb-2">Reports</h3>
+          <p className="text-sm text-slate-600">
+            Later this card will show exported reports.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
