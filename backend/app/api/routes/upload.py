@@ -3,11 +3,16 @@ from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from app.services.text_extractor import extract_text_from_file
+
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 BASE_DIR = Path(__file__).resolve().parents[3]   # backend/
 UPLOAD_DIR = BASE_DIR / "uploads"
+EXTRACTED_DIR = UPLOAD_DIR / "extracted"
+
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+EXTRACTED_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {".txt", ".pdf", ".docx"}
 
@@ -31,6 +36,7 @@ async def upload_document(
             detail="input_mode must be 'file' or 'manual'."
         )
 
+    # CASE 1: File upload
     if input_mode == "file":
         if file is None:
             raise HTTPException(status_code=400, detail="Please choose a file.")
@@ -53,30 +59,33 @@ async def upload_document(
         stored_path = UPLOAD_DIR / stored_filename
         stored_path.write_bytes(contents)
 
-        preview_text = None
-        if extension == ".txt":
-            try:
-                preview_text = contents.decode("utf-8")[:300]
-            except UnicodeDecodeError:
-                preview_text = "Preview unavailable because the text file is not UTF-8 encoded."
+        extracted_text, extraction_warning = extract_text_from_file(stored_path, extension)
+
+        extracted_filename = f"{stored_path.stem}_extracted.txt"
+        extracted_path = EXTRACTED_DIR / extracted_filename
+        extracted_path.write_text(extracted_text, encoding="utf-8")
 
         await file.close()
 
         return {
             "success": True,
-            "message": "File uploaded successfully.",
+            "message": "File uploaded and processed successfully.",
             "document": {
                 "title": title,
                 "source_type": "file",
                 "original_filename": original_filename,
                 "stored_filename": stored_filename,
+                "extracted_filename": extracted_filename,
                 "extension": extension,
                 "content_type": file.content_type,
                 "size_bytes": len(contents),
-                "preview_text": preview_text,
+                "extracted_char_count": len(extracted_text),
+                "preview_text": extracted_text[:500],
+                "extraction_warning": extraction_warning,
             }
         }
 
+    # CASE 2: Manual text
     cleaned_text = (manual_text or "").strip()
 
     if not cleaned_text:
@@ -89,18 +98,25 @@ async def upload_document(
     stored_path = UPLOAD_DIR / stored_filename
     stored_path.write_text(cleaned_text, encoding="utf-8")
 
+    extracted_filename = f"{Path(stored_filename).stem}_extracted.txt"
+    extracted_path = EXTRACTED_DIR / extracted_filename
+    extracted_path.write_text(cleaned_text, encoding="utf-8")
+
     return {
         "success": True,
-        "message": "Manual text saved successfully.",
+        "message": "Manual text saved and processed successfully.",
         "document": {
             "title": title,
             "source_type": "manual",
             "original_filename": None,
             "stored_filename": stored_filename,
+            "extracted_filename": extracted_filename,
             "extension": ".txt",
             "content_type": "text/plain",
             "size_bytes": len(cleaned_text.encode("utf-8")),
             "char_count": len(cleaned_text),
-            "preview_text": cleaned_text[:300],
+            "extracted_char_count": len(cleaned_text),
+            "preview_text": cleaned_text[:500],
+            "extraction_warning": None,
         }
     }

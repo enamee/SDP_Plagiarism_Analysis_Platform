@@ -160,7 +160,7 @@ function UploadPage() {
         </button>
       </form>
 
-      {result && (
+            {result && (
         <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
           <h3 className="text-lg font-semibold text-emerald-800 mb-3">
             Upload Successful
@@ -170,8 +170,10 @@ function UploadPage() {
             <p><strong>Title:</strong> {result.document.title}</p>
             <p><strong>Source Type:</strong> {result.document.source_type}</p>
             <p><strong>Stored Filename:</strong> {result.document.stored_filename}</p>
+            <p><strong>Extracted Filename:</strong> {result.document.extracted_filename}</p>
             <p><strong>Extension:</strong> {result.document.extension}</p>
             <p><strong>Size (bytes):</strong> {result.document.size_bytes}</p>
+            <p><strong>Extracted Character Count:</strong> {result.document.extracted_char_count}</p>
 
             {result.document.original_filename && (
               <p><strong>Original Filename:</strong> {result.document.original_filename}</p>
@@ -181,14 +183,18 @@ function UploadPage() {
               <p><strong>Character Count:</strong> {result.document.char_count}</p>
             )}
 
-            {result.document.preview_text && (
-              <div className="mt-4">
-                <p className="font-semibold mb-2">Preview</p>
-                <div className="rounded-lg border border-slate-200 bg-white p-3 whitespace-pre-wrap">
-                  {result.document.preview_text}
-                </div>
+            {result.document.extraction_warning && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+                <strong>Warning:</strong> {result.document.extraction_warning}
               </div>
             )}
+
+            <div className="mt-4">
+              <p className="font-semibold mb-2">Extracted Text Preview</p>
+              <div className="rounded-lg border border-slate-200 bg-white p-3 whitespace-pre-wrap min-h-[120px]">
+                {result.document.preview_text || 'No extractable text preview available.'}
+              </div>
+            </div>
           </div>
         </div>
       )}
