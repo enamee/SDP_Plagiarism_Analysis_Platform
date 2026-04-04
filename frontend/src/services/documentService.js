@@ -25,3 +25,24 @@ export async function getDocuments() {
 
  return data
 }
+
+export async function compareDocuments(documentAId, documentBId) {
+ const response = await fetch(`${API_BASE_URL}/api/compare/documents`, {
+   method: 'POST',
+   headers: {
+     'Content-Type': 'application/json',
+   },
+   body: JSON.stringify({
+     document_a_id: Number(documentAId),
+     document_b_id: Number(documentBId),
+   }),
+ })
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Comparison failed.')
+ }
+
+ return data
+}
