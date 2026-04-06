@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
  compareDocuments,
+ downloadComparisonReport,
  getDocumentById,
  getDocuments,
 } from '../services/documentService'
@@ -121,7 +122,27 @@ function ComparePage() {
      setComparing(false)
    }
  }
+  const handleDownloadReport = async () => {
+   setError('')
 
+   if (!result || !documentAId || !documentBId) {
+     setError('Please run a comparison first.')
+     return
+   }
+
+   try {
+     setDownloadingReport(true)
+     await downloadComparisonReport(documentAId, documentBId)
+   } catch (err) {
+     setError(err.message)
+   } finally {
+     setDownloadingReport(false)
+   }
+ }
+
+
+
+ const [downloadingReport, setDownloadingReport] = useState(false)
  const matchedSentencesA = result
    ? result.top_matches.map((match) => match.sentence_a)
    : []
@@ -224,6 +245,17 @@ function ComparePage() {
                <p className="text-sm text-slate-500 mb-1">Assessment</p>
                <p className="text-xl font-semibold">{result.similarity_label}</p>
              </div>
+           </div>
+
+           <div className="mt-6">
+             <button
+               type="button"
+               onClick={handleDownloadReport}
+               disabled={downloadingReport}
+               className="rounded-lg bg-emerald-700 text-white px-5 py-2.5 hover:bg-emerald-600 disabled:opacity-60"
+             >
+               {downloadingReport ? 'Generating PDF...' : 'Export PDF Report'}
+             </button>
            </div>
          </div>
 
