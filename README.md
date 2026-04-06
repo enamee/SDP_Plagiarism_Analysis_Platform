@@ -133,3 +133,24 @@ npm run dev
 
 Frontend will run at:
 - http://localhost:5173
+
+
+
+
+
+
+
+## Documentation
+
+Additional project notes are available in the `docs/` folder:
+
+- `docs/demo_script.md` — suggested demo flow for presentation
+- `docs/viva_quick_notes.md` — quick viva preparation notes
+And add this section too:
+## Known Limitations
+
+- Scanned/image-based PDFs may not extract text correctly
+- PDF table reconstruction is less reliable than DOCX
+- Sentence splitting is simple and may not be perfect
+- Style-shift detection is heuristic/statistical, not full authorship verification
+- Graph layout is a simple circular layout for clarity and simplicity

@@ -26,6 +26,45 @@ export async function getDocuments() {
  return data
 }
 
+export async function getDashboardSummary() {
+ const response = await fetch(`${API_BASE_URL}/api/dashboard/summary`)
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error('Failed to fetch dashboard summary.')
+ }
+
+ return data
+}
+
+export async function deleteDocumentById(documentId) {
+ const response = await fetch(`${API_BASE_URL}/api/admin/documents/${documentId}`, {
+   method: 'DELETE',
+ })
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Document deletion failed.')
+ }
+
+ return data
+}
+
+export async function resetAllDemoData() {
+ const response = await fetch(`${API_BASE_URL}/api/admin/reset-data`, {
+   method: 'DELETE',
+ })
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Reset failed.')
+ }
+
+ return data
+}
+
 export async function getDocumentById(documentId) {
  const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}`)
  const data = await response.json()

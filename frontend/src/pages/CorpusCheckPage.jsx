@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getDocuments, runCorpusCheck } from '../services/documentService'
+import EmptyState from '../components/EmptyState'
+import StatusBadge from '../components/StatusBadge'
 
 function CorpusCheckPage() {
  const [documents, setDocuments] = useState([])
@@ -142,9 +144,10 @@ function CorpusCheckPage() {
            <h3 className="text-xl font-semibold mb-4">Ranked Similar Documents</h3>
 
            {result.results.length === 0 ? (
-             <p className="text-slate-600">
-               No candidate documents were available for comparison.
-             </p>
+             <EmptyState
+               title="No ranked results"
+               description="No candidate documents were available or no candidates met the current corpus-check conditions."
+             />
            ) : (
              <div className="space-y-5">
                {result.results.map((item, index) => (
@@ -167,9 +170,16 @@ function CorpusCheckPage() {
 
                      <div className="text-right">
                        <p className="text-2xl font-bold">{item.overall_percentage}%</p>
-                       <p className="text-sm font-medium text-slate-700">
-                         {item.similarity_label}
-                       </p>
+                       <StatusBadge
+                         label={item.similarity_label}
+                         type={
+                           item.similarity_label === 'High Similarity'
+                             ? 'danger'
+                             : item.similarity_label === 'Moderate Similarity'
+                             ? 'warning'
+                             : 'success'
+                         }
+                       />
                      </div>
                    </div>
 

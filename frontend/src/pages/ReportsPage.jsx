@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getDocuments, runStyleShiftAnalysis } from '../services/documentService'
+import EmptyState from '../components/EmptyState'
+import StatusBadge from '../components/StatusBadge'
 
 function ReportsPage() {
   const [documents, setDocuments] = useState([])
@@ -231,13 +233,10 @@ function ReportsPage() {
                       <p className="text-lg font-bold">
                         {chunk.anomaly_score}
                       </p>
-                      <p
-                        className={`text-sm font-medium ${
-                          chunk.is_suspicious ? 'text-red-700' : 'text-slate-700'
-                        }`}
-                      >
-                        {chunk.is_suspicious ? 'Suspicious' : 'Normal'}
-                      </p>
+                      <StatusBadge
+                        label={chunk.is_suspicious ? 'Suspicious' : 'Normal'}
+                        type={chunk.is_suspicious ? 'danger' : 'success'}
+                      />
                     </div>
                   </div>
 

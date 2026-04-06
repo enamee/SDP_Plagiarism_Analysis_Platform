@@ -1,3 +1,5 @@
+import EmptyState from '../components/EmptyState'
+import StatusBadge from '../components/StatusBadge'
 import { useEffect, useMemo, useState } from 'react'
 import {
  compareDocuments,
@@ -243,7 +245,17 @@ function ComparePage() {
 
              <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
                <p className="text-sm text-slate-500 mb-1">Assessment</p>
-               <p className="text-xl font-semibold">{result.similarity_label}</p>
+               <StatusBadge
+                label={result.similarity_label}
+                type={
+                  result.similarity_label === 'High Similarity'
+                    ? 'danger'
+                    : result.similarity_label === 'Moderate Similarity'
+                    ? 'warning'
+                    : 'success'
+                }
+                />
+
              </div>
            </div>
 
@@ -263,9 +275,11 @@ function ComparePage() {
            <h3 className="text-xl font-semibold mb-4">Top Matching Sentences</h3>
 
            {result.top_matches.length === 0 ? (
-             <p className="text-slate-600">
-               No strong sentence-level matches were found.
-             </p>
+            <EmptyState
+            title="No strong sentence matches"
+            description="The selected documents do not have strong sentence-level overlap in the current analysis."
+            />
+
            ) : (
              <div className="space-y-4">
                {result.top_matches.map((match, index) => (

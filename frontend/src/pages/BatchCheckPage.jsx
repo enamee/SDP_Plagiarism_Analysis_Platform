@@ -1,3 +1,5 @@
+import EmptyState from '../components/EmptyState'
+import StatusBadge from '../components/StatusBadge'
 import { useEffect, useState } from 'react'
 import { getDocuments, runBatchCheck } from '../services/documentService'
 
@@ -84,7 +86,11 @@ function BatchCheckPage() {
              </label>
 
              {documents.length === 0 ? (
-               <p className="text-slate-600">No uploaded documents available.</p>
+               <EmptyState
+                title="No suspicious pairs found"
+                description="No document pairs met the selected similarity threshold."
+                />
+
              ) : (
                <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 p-4 bg-slate-50 space-y-3">
                  {documents.map((doc) => (
@@ -215,9 +221,17 @@ function BatchCheckPage() {
 
                      <div className="text-right">
                        <p className="text-2xl font-bold">{pair.overall_percentage}%</p>
-                       <p className="text-sm font-medium text-slate-700">
-                         {pair.similarity_label}
-                       </p>
+                       <StatusBadge
+                        label={pair.similarity_label}
+                        type={
+                          pair.similarity_label === 'High Similarity'
+                            ? 'danger'
+                            : pair.similarity_label === 'Moderate Similarity'
+                            ? 'warning'
+                            : 'success'
+                        }
+                        />
+
                      </div>
                    </div>
 
