@@ -7,6 +7,7 @@ from app.api.routes.corpus_check import router as corpus_check_router
 from app.api.routes.document_detail import router as document_detail_router
 from app.api.routes.document_list import router as document_list_router
 from app.api.routes.graph import router as graph_router
+from app.api.routes.style_shift import router as style_shift_router
 from app.api.routes.upload import router as upload_router
 from app.core.database import Base, engine
 from app.models import DocumentRecord  # noqa: F401
@@ -33,6 +34,7 @@ app.include_router(compare_router)
 app.include_router(corpus_check_router)
 app.include_router(batch_check_router)
 app.include_router(graph_router)
+app.include_router(style_shift_router)
 
 
 @app.get("/")

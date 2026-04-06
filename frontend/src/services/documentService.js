@@ -114,3 +114,25 @@ export async function generateGraph(documentIds = [], minSimilarity = 0.2) {
 
   return data
 }
+
+export async function runStyleShiftAnalysis(documentId, chunkSize = 5, anomalyThreshold = 1.2) {
+  const response = await fetch(`${API_BASE_URL}/api/style-shift`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      document_id: Number(documentId),
+      chunk_size: Number(chunkSize),
+      anomaly_threshold: Number(anomalyThreshold),
+    }),
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.detail || 'Style-shift analysis failed.')
+  }
+
+  return data
+}
