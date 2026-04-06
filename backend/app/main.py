@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.admin_tools import router as admin_tools_router
 from app.api.routes.batch_check import router as batch_check_router
 from app.api.routes.compare import router as compare_router
 from app.api.routes.corpus_check import router as corpus_check_router
+from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.document_detail import router as document_detail_router
 from app.api.routes.document_list import router as document_list_router
 from app.api.routes.graph import router as graph_router
@@ -37,6 +39,8 @@ app.include_router(batch_check_router)
 app.include_router(graph_router)
 app.include_router(style_shift_router)
 app.include_router(report_export_router)
+app.include_router(dashboard_router)
+app.include_router(admin_tools_router)
 
 
 @app.get("/")
