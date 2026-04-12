@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import engine, get_db
+from app.services.fts_index import clear_documents_fts, delete_document_from_fts
 from app.models.document import DocumentRecord
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -33,6 +34,8 @@ def delete_document(document_id: int, db: Session = Depends(get_db)):
    safe_remove_file(stored_path)
    safe_remove_file(extracted_path)
 
+   delete_document_from_fts(engine, document.id)
+
    db.delete(document)
    db.commit()
 
@@ -59,6 +62,8 @@ def reset_all_data(db: Session = Depends(get_db)):
        deleted_documents += 1
 
    db.commit()
+
+   clear_documents_fts(engine)
 
    deleted_reports = 0
    if REPORT_DIR.exists():

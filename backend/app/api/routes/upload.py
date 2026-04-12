@@ -4,7 +4,8 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import engine, get_db
+from app.services.fts_index import upsert_document_in_fts
 from app.models.document import DocumentRecord
 from app.services.preprocessing import (
     build_scope_key,
@@ -147,6 +148,8 @@ async def upload_document(
         db.commit()
         db.refresh(document_record)
 
+        upsert_document_in_fts(engine, document_record)
+
         return {
             "success": True,
             "message": "File uploaded, processed, and indexed-prepared successfully.",
@@ -235,6 +238,8 @@ async def upload_document(
     db.add(document_record)
     db.commit()
     db.refresh(document_record)
+
+    upsert_document_in_fts(engine, document_record)
 
     return {
         "success": True,

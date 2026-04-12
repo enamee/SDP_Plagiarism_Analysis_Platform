@@ -26,6 +26,20 @@ export async function getDocuments() {
  return data
 }
 
+export async function getShortlist(documentId, topK = 10, sameScopeFirst = true) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/retrieval/shortlist/${documentId}?top_k=${Number(topK)}&same_scope_first=${sameScopeFirst}`
+  )
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.detail || 'Shortlist retrieval failed.')
+  }
+
+  return data
+}
+
 export async function getDashboardSummary() {
  const response = await fetch(`${API_BASE_URL}/api/dashboard/summary`)
  const data = await response.json()
