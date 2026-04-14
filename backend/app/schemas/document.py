@@ -9,11 +9,8 @@ class DocumentListItem(BaseModel):
     id: int
     title: str
 
-    course_code: str
-    assignment_name: str
+    comparison_group: str
     document_type: str
-    semester: str | None
-    section: str | None
     topic_tag: str | None
     scope_key: str
 
@@ -35,11 +32,8 @@ class DocumentDetail(BaseModel):
     id: int
     title: str
 
-    course_code: str
-    assignment_name: str
+    comparison_group: str
     document_type: str
-    semester: str | None
-    section: str | None
     topic_tag: str | None
     scope_key: str
 

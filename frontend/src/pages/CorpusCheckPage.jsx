@@ -272,7 +272,7 @@ function CorpusCheckPage() {
                         <p className="text-sm text-slate-500">Rank #{index + 1}</p>
                         <h4 className="text-lg font-semibold">{item.title}</h4>
                         <p className="text-sm text-slate-600">
-                          ID: {item.document_id} | {item.course_code} | {item.assignment_name} | {item.document_type}
+                          ID: {item.document_id} | Group: {item.comparison_group} | Type: {item.document_type}
                         </p>
                         <p className="text-xs text-slate-500 mt-1 break-all">
                           Scope: {item.scope_key}

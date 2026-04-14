@@ -13,14 +13,11 @@ class DocumentRecord(Base):
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    course_code: Mapped[str] = mapped_column(String(100), nullable=False)
-    assignment_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    comparison_group: Mapped[str] = mapped_column(String(255), nullable=False)
     document_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    semester: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    section: Mapped[str | None] = mapped_column(String(100), nullable=True)
     topic_tag: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    scope_key: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
+    scope_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
     source_type: Mapped[str] = mapped_column(String(20), nullable=False)
 

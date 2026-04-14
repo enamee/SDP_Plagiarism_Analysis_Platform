@@ -60,54 +60,74 @@ def slugify_text(value: str) -> str:
     return value
 
 
-def build_scope_key(
-    course_code: str,
-    assignment_name: str,
-    document_type: str,
-    semester: str | None = None,
-    section: str | None = None,
-) -> str:
+def build_scope_key(comparison_group: str) -> str:
     """
-    Build a reusable scope key for later subset-based retrieval.
+    Scope is determined only by the comparison group.
     """
-    parts = [
-        slugify_text(course_code),
-        slugify_text(assignment_name),
-        slugify_text(document_type),
-    ]
+    return slugify_text(comparison_group)
 
-    if semester and semester.strip():
-        parts.append(slugify_text(semester))
 
-    if section and section.strip():
-        parts.append(slugify_text(section))
+def parse_topic_tags(topic_tag: str | None) -> list[str]:
+    """
+    Support multiple tags in one input field.
+    Example:
+      'plagiarism, academic writing, nlp'
+    becomes:
+      ['plagiarism', 'academic writing', 'nlp']
+    """
+    if not topic_tag:
+        return []
 
-    return "::".join(parts)
+    raw_parts = re.split(r"[,;\n]+", topic_tag)
+
+    tags = []
+    seen = set()
+
+    for part in raw_parts:
+        cleaned = part.strip().lower()
+        cleaned = re.sub(r"\s+", " ", cleaned)
+
+        if not cleaned:
+            continue
+
+        if cleaned in seen:
+            continue
+
+        seen.add(cleaned)
+        tags.append(cleaned)
+
+    return tags
+
+
+def serialize_topic_tags(tags: list[str]) -> str | None:
+    """
+    Convert normalized tag list back into one stored string.
+    """
+    if not tags:
+        return None
+
+    return ", ".join(tags)
 
 
 def build_search_text(
     title: str,
-    course_code: str,
-    assignment_name: str,
+    comparison_group: str,
     document_type: str,
-    semester: str | None,
-    section: str | None,
     topic_tag: str | None,
     extracted_text: str,
 ) -> str:
     """
-    Create a single searchable text blob that combines metadata and normalized content.
-    This will be useful later for FTS-based shortlist retrieval.
+    Create a searchable text blob combining generic metadata and normalized content.
+    Multiple topic tags are expanded into searchable text.
     """
+    topic_tags = parse_topic_tags(topic_tag)
+
     raw_text = " ".join(
         [
             title or "",
-            course_code or "",
-            assignment_name or "",
+            comparison_group or "",
             document_type or "",
-            semester or "",
-            section or "",
-            topic_tag or "",
+            " ".join(topic_tags),
             extracted_text or "",
         ]
     )

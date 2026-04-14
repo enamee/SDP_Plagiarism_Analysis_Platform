@@ -3,7 +3,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from app.models.document import DocumentRecord
-from app.services.preprocessing import normalize_text, tokenize_words
+from app.services.preprocessing import normalize_text, parse_topic_tags, tokenize_words
 
 
 STOPWORDS = {
@@ -17,13 +17,14 @@ STOPWORDS = {
 
 
 def build_fts_query_from_document(document: DocumentRecord, max_terms: int = 12) -> str:
+    topic_tags_text = " ".join(parse_topic_tags(document.topic_tag))
+
     candidate_text = " ".join(
         [
             document.title or "",
-            document.course_code or "",
-            document.assignment_name or "",
+            document.comparison_group or "",
             document.document_type or "",
-            document.topic_tag or "",
+            topic_tags_text,
             document.normalized_text[:2000],
         ]
     )
@@ -110,8 +111,7 @@ def run_fts_shortlist(
         results.append({
             "document_id": candidate.id,
             "title": candidate.title,
-            "course_code": candidate.course_code,
-            "assignment_name": candidate.assignment_name,
+            "comparison_group": candidate.comparison_group,
             "document_type": candidate.document_type,
             "scope_key": candidate.scope_key,
             "extension": candidate.extension,

@@ -5,12 +5,14 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.database import engine, get_db
-from app.services.fts_index import upsert_document_in_fts
 from app.models.document import DocumentRecord
+from app.services.fts_index import upsert_document_in_fts
 from app.services.preprocessing import (
     build_scope_key,
     build_search_text,
     normalize_text,
+    parse_topic_tags,
+    serialize_topic_tags,
     split_into_sentences,
     tokenize_words,
 )
@@ -31,11 +33,8 @@ ALLOWED_EXTENSIONS = {".txt", ".pdf", ".docx"}
 @router.post("/upload")
 async def upload_document(
     title: str = Form(...),
-    course_code: str = Form(...),
-    assignment_name: str = Form(...),
+    comparison_group: str = Form(...),
     document_type: str = Form(...),
-    semester: str | None = Form(None),
-    section: str | None = Form(None),
     topic_tag: str | None = Form(None),
     input_mode: str = Form(...),
     manual_text: str | None = Form(None),
@@ -43,20 +42,16 @@ async def upload_document(
     db: Session = Depends(get_db),
 ):
     title = title.strip()
-    course_code = course_code.strip()
-    assignment_name = assignment_name.strip()
+    comparison_group = comparison_group.strip()
     document_type = document_type.strip()
-    semester = semester.strip() if semester else None
-    section = section.strip() if section else None
-    topic_tag = topic_tag.strip() if topic_tag else None
+    topic_tags = parse_topic_tags(topic_tag)
+    topic_tag = serialize_topic_tags(topic_tags)
     input_mode = input_mode.strip().lower()
 
     if not title:
         raise HTTPException(status_code=400, detail="Title is required.")
-    if not course_code:
-        raise HTTPException(status_code=400, detail="Course code is required.")
-    if not assignment_name:
-        raise HTTPException(status_code=400, detail="Assignment name is required.")
+    if not comparison_group:
+        raise HTTPException(status_code=400, detail="Comparison group is required.")
     if not document_type:
         raise HTTPException(status_code=400, detail="Document type is required.")
 
@@ -66,15 +61,8 @@ async def upload_document(
             detail="input_mode must be 'file' or 'manual'."
         )
 
-    scope_key = build_scope_key(
-        course_code=course_code,
-        assignment_name=assignment_name,
-        document_type=document_type,
-        semester=semester,
-        section=section,
-    )
+    scope_key = build_scope_key(comparison_group)
 
-    # FILE MODE
     if input_mode == "file":
         if file is None:
             raise HTTPException(status_code=400, detail="Please choose a file.")
@@ -108,11 +96,8 @@ async def upload_document(
         token_count = len(tokenize_words(extracted_text))
         search_text = build_search_text(
             title=title,
-            course_code=course_code,
-            assignment_name=assignment_name,
+            comparison_group=comparison_group,
             document_type=document_type,
-            semester=semester,
-            section=section,
             topic_tag=topic_tag,
             extracted_text=extracted_text,
         )
@@ -121,11 +106,8 @@ async def upload_document(
 
         document_record = DocumentRecord(
             title=title,
-            course_code=course_code,
-            assignment_name=assignment_name,
+            comparison_group=comparison_group,
             document_type=document_type,
-            semester=semester,
-            section=section,
             topic_tag=topic_tag,
             scope_key=scope_key,
             source_type="file",
@@ -152,15 +134,12 @@ async def upload_document(
 
         return {
             "success": True,
-            "message": "File uploaded, processed, and indexed-prepared successfully.",
+            "message": "File uploaded, processed, and retrieval-prepared successfully.",
             "document": {
                 "id": document_record.id,
                 "title": document_record.title,
-                "course_code": document_record.course_code,
-                "assignment_name": document_record.assignment_name,
+                "comparison_group": document_record.comparison_group,
                 "document_type": document_record.document_type,
-                "semester": document_record.semester,
-                "section": document_record.section,
                 "topic_tag": document_record.topic_tag,
                 "scope_key": document_record.scope_key,
                 "source_type": document_record.source_type,
@@ -179,7 +158,6 @@ async def upload_document(
             }
         }
 
-    # MANUAL MODE
     cleaned_text = (manual_text or "").strip()
 
     if not cleaned_text:
@@ -201,22 +179,16 @@ async def upload_document(
     token_count = len(tokenize_words(cleaned_text))
     search_text = build_search_text(
         title=title,
-        course_code=course_code,
-        assignment_name=assignment_name,
+        comparison_group=comparison_group,
         document_type=document_type,
-        semester=semester,
-        section=section,
         topic_tag=topic_tag,
         extracted_text=cleaned_text,
     )
 
     document_record = DocumentRecord(
         title=title,
-        course_code=course_code,
-        assignment_name=assignment_name,
+        comparison_group=comparison_group,
         document_type=document_type,
-        semester=semester,
-        section=section,
         topic_tag=topic_tag,
         scope_key=scope_key,
         source_type="manual",
@@ -243,15 +215,12 @@ async def upload_document(
 
     return {
         "success": True,
-        "message": "Manual text uploaded, processed, and indexed-prepared successfully.",
+        "message": "Manual text uploaded, processed, and retrieval-prepared successfully.",
         "document": {
             "id": document_record.id,
             "title": document_record.title,
-            "course_code": document_record.course_code,
-            "assignment_name": document_record.assignment_name,
+            "comparison_group": document_record.comparison_group,
             "document_type": document_record.document_type,
-            "semester": document_record.semester,
-            "section": document_record.section,
             "topic_tag": document_record.topic_tag,
             "scope_key": document_record.scope_key,
             "source_type": document_record.source_type,

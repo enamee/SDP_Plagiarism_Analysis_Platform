@@ -3,11 +3,8 @@ import { uploadDocument } from '../services/documentService'
 
 function UploadPage() {
   const [title, setTitle] = useState('')
-  const [courseCode, setCourseCode] = useState('')
-  const [assignmentName, setAssignmentName] = useState('')
+  const [comparisonGroup, setComparisonGroup] = useState('')
   const [documentType, setDocumentType] = useState('')
-  const [semester, setSemester] = useState('')
-  const [section, setSection] = useState('')
   const [topicTag, setTopicTag] = useState('')
 
   const [inputMode, setInputMode] = useState('file')
@@ -29,13 +26,8 @@ function UploadPage() {
       return
     }
 
-    if (!courseCode.trim()) {
-      setError('Please enter a course code.')
-      return
-    }
-
-    if (!assignmentName.trim()) {
-      setError('Please enter an assignment name.')
+    if (!comparisonGroup.trim()) {
+      setError('Please enter a comparison group.')
       return
     }
 
@@ -56,11 +48,8 @@ function UploadPage() {
 
     const formData = new FormData()
     formData.append('title', title)
-    formData.append('course_code', courseCode)
-    formData.append('assignment_name', assignmentName)
+    formData.append('comparison_group', comparisonGroup)
     formData.append('document_type', documentType)
-    formData.append('semester', semester)
-    formData.append('section', section)
     formData.append('topic_tag', topicTag)
     formData.append('input_mode', inputMode)
 
@@ -91,7 +80,7 @@ function UploadPage() {
     <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
       <h2 className="text-2xl font-bold mb-3">Upload Documents</h2>
       <p className="text-slate-700 mb-6">
-        Upload TXT, PDF, DOCX files or paste text manually. This version also stores metadata and preprocessing statistics for smarter retrieval later.
+        Upload TXT, PDF, DOCX files or paste text manually. Each document now belongs to a generic comparison group for smarter retrieval.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -111,26 +100,13 @@ function UploadPage() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Course Code
+              Comparison Group
             </label>
             <input
               type="text"
-              value={courseCode}
-              onChange={(e) => setCourseCode(e.target.value)}
-              placeholder="e.g. CSE3200"
-              className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Assignment Name
-            </label>
-            <input
-              type="text"
-              value={assignmentName}
-              onChange={(e) => setAssignmentName(e.target.value)}
-              placeholder="e.g. Final Report"
+              value={comparisonGroup}
+              onChange={(e) => setComparisonGroup(e.target.value)}
+              placeholder="e.g. School Science Reports 2026"
               className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
             />
           </div>
@@ -143,46 +119,20 @@ function UploadPage() {
               type="text"
               value={documentType}
               onChange={(e) => setDocumentType(e.target.value)}
-              placeholder="e.g. report, essay, lab-report"
+              placeholder="e.g. report, essay, article"
               className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Semester (optional)
-            </label>
-            <input
-              type="text"
-              value={semester}
-              onChange={(e) => setSemester(e.target.value)}
-              placeholder="e.g. 3-2"
-              className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Section (optional)
-            </label>
-            <input
-              type="text"
-              value={section}
-              onChange={(e) => setSection(e.target.value)}
-              placeholder="e.g. A"
-              className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Topic Tag (optional)
+              Topic Tags (optional)
             </label>
             <input
               type="text"
               value={topicTag}
               onChange={(e) => setTopicTag(e.target.value)}
-              placeholder="e.g. linux-kernel, databases, compiler"
+              placeholder="e.g. plagiarism, academic writing, nlp"
               className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
             />
           </div>
@@ -278,12 +228,9 @@ function UploadPage() {
           <div className="space-y-2 text-sm text-slate-800">
             <p><strong>ID:</strong> {result.document.id}</p>
             <p><strong>Title:</strong> {result.document.title}</p>
-            <p><strong>Course Code:</strong> {result.document.course_code}</p>
-            <p><strong>Assignment Name:</strong> {result.document.assignment_name}</p>
+            <p><strong>Comparison Group:</strong> {result.document.comparison_group}</p>
             <p><strong>Document Type:</strong> {result.document.document_type}</p>
-            <p><strong>Semester:</strong> {result.document.semester || 'N/A'}</p>
-            <p><strong>Section:</strong> {result.document.section || 'N/A'}</p>
-            <p><strong>Topic Tag:</strong> {result.document.topic_tag || 'N/A'}</p>
+            <p><strong>Topic Tags:</strong> {result.document.topic_tag || 'N/A'}</p>
             <p><strong>Scope Key:</strong> {result.document.scope_key}</p>
             <p><strong>Source Type:</strong> {result.document.source_type}</p>
             <p><strong>Stored Filename:</strong> {result.document.stored_filename}</p>

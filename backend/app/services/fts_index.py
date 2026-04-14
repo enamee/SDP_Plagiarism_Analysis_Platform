@@ -12,8 +12,7 @@ def ensure_documents_fts(engine: Engine):
     CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts
     USING fts5(
         title,
-        course_code,
-        assignment_name,
+        comparison_group,
         document_type,
         topic_tag,
         search_text,
@@ -35,8 +34,7 @@ def upsert_document_in_fts(engine: Engine, document: DocumentRecord):
     INSERT INTO documents_fts (
         rowid,
         title,
-        course_code,
-        assignment_name,
+        comparison_group,
         document_type,
         topic_tag,
         search_text,
@@ -45,8 +43,7 @@ def upsert_document_in_fts(engine: Engine, document: DocumentRecord):
     VALUES (
         :rowid,
         :title,
-        :course_code,
-        :assignment_name,
+        :comparison_group,
         :document_type,
         :topic_tag,
         :search_text,
@@ -61,8 +58,7 @@ def upsert_document_in_fts(engine: Engine, document: DocumentRecord):
             {
                 "rowid": document.id,
                 "title": document.title,
-                "course_code": document.course_code,
-                "assignment_name": document.assignment_name,
+                "comparison_group": document.comparison_group,
                 "document_type": document.document_type,
                 "topic_tag": document.topic_tag or "",
                 "search_text": document.search_text,
