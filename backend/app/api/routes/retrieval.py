@@ -14,6 +14,7 @@ def get_shortlist(
     document_id: int,
     top_k: int = 10,
     same_scope_first: bool = True,
+    scope_only: bool = False,
     db: Session = Depends(get_db),
 ):
     if top_k < 1:
@@ -33,6 +34,7 @@ def get_shortlist(
         source_document=source_document,
         top_k=top_k,
         same_scope_first=same_scope_first,
+        scope_only=scope_only,
     )
 
     return {
@@ -41,6 +43,7 @@ def get_shortlist(
         "scope_key": source_document.scope_key,
         "fts_query": shortlist["fts_query"],
         "same_scope_first": same_scope_first,
+        "scope_only": scope_only,
         "returned_candidates": len(shortlist["results"]),
         "results": shortlist["results"],
     }

@@ -11,16 +11,12 @@ STOPWORDS = {
     "your", "into", "their", "there", "about", "using", "been", "were",
     "which", "when", "where", "while", "then", "than", "they", "them",
     "also", "some", "much", "many", "more", "most", "very", "what",
-    "does", "done", "able", "only", "such", "same", "used", "been",
-    "into", "over", "under", "than", "each", "both", "within", "between"
+    "does", "done", "able", "only", "such", "same", "used", "over",
+    "under", "each", "both", "within", "between"
 }
 
 
 def build_fts_query_from_document(document: DocumentRecord, max_terms: int = 12) -> str:
-    """
-    Build a compact OR-based FTS query from metadata + normalized text.
-    We intentionally do not send the full document text as the MATCH query.
-    """
     candidate_text = " ".join(
         [
             document.title or "",
@@ -28,7 +24,7 @@ def build_fts_query_from_document(document: DocumentRecord, max_terms: int = 12)
             document.assignment_name or "",
             document.document_type or "",
             document.topic_tag or "",
-            document.normalized_text[:2000],  # keep it bounded
+            document.normalized_text[:2000],
         ]
     )
 
@@ -52,7 +48,6 @@ def build_fts_query_from_document(document: DocumentRecord, max_terms: int = 12)
             break
 
     if not selected_terms:
-        # Fallback: use a very small set from title if everything else fails
         title_tokens = tokenize_words(normalize_text(document.title))
         selected_terms = [token for token in title_tokens if len(token) >= 2][:4]
 
@@ -65,6 +60,7 @@ def run_fts_shortlist(
     source_document: DocumentRecord,
     top_k: int = 10,
     same_scope_first: bool = True,
+    scope_only: bool = False,
 ):
     fts_query = build_fts_query_from_document(source_document)
 
@@ -74,7 +70,6 @@ def run_fts_shortlist(
             "results": [],
         }
 
-    # Pull more than top_k so we can reorder same-scope documents first in Python
     fetch_limit = max(top_k * 4, 20)
 
     shortlist_sql = """
@@ -109,6 +104,9 @@ def run_fts_shortlist(
 
         same_scope = candidate.scope_key == source_document.scope_key
 
+        if scope_only and not same_scope:
+            continue
+
         results.append({
             "document_id": candidate.id,
             "title": candidate.title,
@@ -121,7 +119,7 @@ def run_fts_shortlist(
             "rank_score": float(row["rank"]) if row["rank"] is not None else 0.0,
         })
 
-    if same_scope_first:
+    if same_scope_first and not scope_only:
         results.sort(key=lambda item: (not item["same_scope"], item["rank_score"]))
     else:
         results.sort(key=lambda item: item["rank_score"])

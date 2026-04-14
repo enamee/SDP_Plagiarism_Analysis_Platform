@@ -26,9 +26,14 @@ export async function getDocuments() {
  return data
 }
 
-export async function getShortlist(documentId, topK = 10, sameScopeFirst = true) {
+export async function getShortlist(
+  documentId,
+  topK = 10,
+  sameScopeFirst = true,
+  scopeOnly = false
+) {
   const response = await fetch(
-    `${API_BASE_URL}/api/retrieval/shortlist/${documentId}?top_k=${Number(topK)}&same_scope_first=${sameScopeFirst}`
+    `${API_BASE_URL}/api/retrieval/shortlist/${documentId}?top_k=${Number(topK)}&same_scope_first=${sameScopeFirst}&scope_only=${scopeOnly}`
   )
 
   const data = await response.json()
@@ -111,18 +116,24 @@ export async function compareDocuments(documentAId, documentBId) {
  return data
 }
 
-export async function runCorpusCheck(documentId, topK = 5) {
- const response = await fetch(
-   `${API_BASE_URL}/api/corpus-check/${documentId}?top_k=${Number(topK)}`
- )
+export async function runCorpusCheck(
+  documentId,
+  resultTopK = 5,
+  shortlistTopK = 20,
+  sameScopeFirst = true,
+  scopeOnly = false
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/corpus-check/${documentId}?result_top_k=${Number(resultTopK)}&shortlist_top_k=${Number(shortlistTopK)}&same_scope_first=${sameScopeFirst}&scope_only=${scopeOnly}`
+  )
 
- const data = await response.json()
+  const data = await response.json()
 
- if (!response.ok) {
-   throw new Error(data.detail || 'Corpus check failed.')
- }
+  if (!response.ok) {
+    throw new Error(data.detail || 'Corpus check failed.')
+  }
 
- return data
+  return data
 }
 
 export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs = 20) {

@@ -19,5 +19,6 @@ class ShortlistResponse(BaseModel):
     scope_key: str
     fts_query: str
     same_scope_first: bool
+    scope_only: bool
     returned_candidates: int
     results: list[ShortlistCandidate]

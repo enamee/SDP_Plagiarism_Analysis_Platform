@@ -6,8 +6,11 @@ import { getDocuments, getShortlist, runCorpusCheck } from '../services/document
 function CorpusCheckPage() {
   const [documents, setDocuments] = useState([])
   const [selectedDocumentId, setSelectedDocumentId] = useState('')
-  const [topK, setTopK] = useState(5)
+
+  const [resultTopK, setResultTopK] = useState(5)
+  const [shortlistTopK, setShortlistTopK] = useState(20)
   const [sameScopeFirst, setSameScopeFirst] = useState(true)
+  const [scopeOnly, setScopeOnly] = useState(false)
 
   const [loadingDocuments, setLoadingDocuments] = useState(true)
   const [runningShortlist, setRunningShortlist] = useState(false)
@@ -43,14 +46,19 @@ function CorpusCheckPage() {
       return
     }
 
-    if (Number(topK) < 1) {
-      setError('Top result count must be at least 1.')
+    if (Number(shortlistTopK) < 1) {
+      setError('Shortlist size must be at least 1.')
       return
     }
 
     try {
       setRunningShortlist(true)
-      const data = await getShortlist(selectedDocumentId, topK, sameScopeFirst)
+      const data = await getShortlist(
+        selectedDocumentId,
+        shortlistTopK,
+        sameScopeFirst,
+        scopeOnly
+      )
       setShortlistResult(data)
     } catch (err) {
       setError(err.message)
@@ -69,14 +77,25 @@ function CorpusCheckPage() {
       return
     }
 
-    if (Number(topK) < 1) {
-      setError('Top result count must be at least 1.')
+    if (Number(resultTopK) < 1) {
+      setError('Final result count must be at least 1.')
+      return
+    }
+
+    if (Number(shortlistTopK) < 1) {
+      setError('Shortlist size must be at least 1.')
       return
     }
 
     try {
       setRunningCheck(true)
-      const data = await runCorpusCheck(selectedDocumentId, topK)
+      const data = await runCorpusCheck(
+        selectedDocumentId,
+        resultTopK,
+        shortlistTopK,
+        sameScopeFirst,
+        scopeOnly
+      )
       setResult(data)
     } catch (err) {
       setError(err.message)
@@ -90,7 +109,7 @@ function CorpusCheckPage() {
       <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
         <h2 className="text-2xl font-bold mb-3">Corpus Check</h2>
         <p className="text-slate-700 mb-6">
-          This redesigned page now has two stages: first retrieve a shortlist of likely candidates, then run the full detailed corpus comparison.
+          This page now uses a two-stage pipeline: shortlist retrieval first, then detailed reranking only on shortlisted candidates.
         </p>
 
         {loadingDocuments ? (
@@ -118,27 +137,53 @@ function CorpusCheckPage() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Top Results
+                  Final Results to Return
                 </label>
                 <input
                   type="number"
                   min="1"
                   max="20"
-                  value={topK}
-                  onChange={(e) => setTopK(e.target.value)}
+                  value={resultTopK}
+                  onChange={(e) => setResultTopK(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Shortlist Size
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={shortlistTopK}
+                  onChange={(e) => setShortlistTopK(e.target.value)}
                   className="w-full rounded-lg border border-slate-300 px-4 py-2"
                 />
               </div>
             </div>
 
-            <label className="flex items-center gap-3 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={sameScopeFirst}
-                onChange={(e) => setSameScopeFirst(e.target.checked)}
-              />
-              Prefer same-scope documents first
-            </label>
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-3 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={sameScopeFirst}
+                  onChange={(e) => setSameScopeFirst(e.target.checked)}
+                  disabled={scopeOnly}
+                />
+                Prefer same-scope documents first
+              </label>
+
+              <label className="flex items-center gap-3 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={scopeOnly}
+                  onChange={(e) => setScopeOnly(e.target.checked)}
+                />
+                Restrict shortlist to same-scope documents only
+              </label>
+            </div>
 
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
@@ -162,7 +207,7 @@ function CorpusCheckPage() {
                 disabled={runningCheck}
                 className="rounded-lg bg-slate-900 text-white px-5 py-2.5 hover:bg-slate-800 disabled:opacity-60"
               >
-                {runningCheck ? 'Checking Corpus...' : 'Run Detailed Corpus Check'}
+                {runningCheck ? 'Running Detailed Check...' : 'Run Detailed Corpus Check'}
               </button>
             </div>
           </form>
@@ -174,7 +219,7 @@ function CorpusCheckPage() {
           <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
             <h3 className="text-xl font-semibold mb-4">Shortlist Summary</h3>
 
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid md:grid-cols-5 gap-4">
               <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
                 <p className="text-sm text-slate-500 mb-1">Source Document</p>
                 <p className="font-semibold">{shortlistResult.source_document_title}</p>
@@ -193,6 +238,11 @@ function CorpusCheckPage() {
               <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
                 <p className="text-sm text-slate-500 mb-1">Same Scope First</p>
                 <p className="font-semibold">{shortlistResult.same_scope_first ? 'Yes' : 'No'}</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
+                <p className="text-sm text-slate-500 mb-1">Scope Only</p>
+                <p className="font-semibold">{shortlistResult.scope_only ? 'Yes' : 'No'}</p>
               </div>
             </div>
 
@@ -235,7 +285,7 @@ function CorpusCheckPage() {
                           type={item.same_scope ? 'success' : 'info'}
                         />
                         <p className="text-sm text-slate-600">
-                          Rank score: {item.rank_score}
+                          Retrieval rank score: {item.rank_score}
                         </p>
                       </div>
                     </div>
@@ -252,31 +302,53 @@ function CorpusCheckPage() {
           <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
             <h3 className="text-xl font-semibold mb-4">Detailed Corpus Check Summary</h3>
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-6 gap-4">
               <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
                 <p className="text-sm text-slate-500 mb-1">Source Document</p>
                 <p className="font-semibold">{result.source_document_title}</p>
               </div>
 
               <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
-                <p className="text-sm text-slate-500 mb-1">Candidates Checked</p>
-                <p className="text-2xl font-bold">{result.total_candidates_checked}</p>
+                <p className="text-sm text-slate-500 mb-1">Scope Key</p>
+                <p className="text-xs font-semibold break-all">{result.scope_key}</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
+                <p className="text-sm text-slate-500 mb-1">Shortlist Retrieved</p>
+                <p className="text-2xl font-bold">{result.shortlist_candidates_retrieved}</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
+                <p className="text-sm text-slate-500 mb-1">Detailed Checked</p>
+                <p className="text-2xl font-bold">{result.detailed_candidates_checked}</p>
               </div>
 
               <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
                 <p className="text-sm text-slate-500 mb-1">Returned Results</p>
                 <p className="text-2xl font-bold">{result.returned_candidates}</p>
               </div>
+
+              <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
+                <p className="text-sm text-slate-500 mb-1">Scope Mode</p>
+                <p className="font-semibold">
+                  {result.scope_only ? 'Same Scope Only' : result.same_scope_first ? 'Prefer Same Scope' : 'Global'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm text-slate-500 mb-1">FTS Query Used</p>
+              <p className="font-mono text-sm break-all">{result.fts_query || 'N/A'}</p>
             </div>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
-            <h3 className="text-xl font-semibold mb-4">Ranked Similar Documents</h3>
+            <h3 className="text-xl font-semibold mb-4">Final Ranked Similar Documents</h3>
 
             {result.results.length === 0 ? (
               <EmptyState
                 title="No ranked results"
-                description="No candidate documents were available or no candidates met the current corpus-check conditions."
+                description="No shortlisted candidates were available or no detailed comparison results were produced."
               />
             ) : (
               <div className="space-y-5">
@@ -288,7 +360,7 @@ function CorpusCheckPage() {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                       <div>
                         <p className="text-sm text-slate-500">
-                          Rank #{index + 1}
+                          Final Rank #{index + 1}
                         </p>
                         <h4 className="text-lg font-semibold">
                           {item.candidate_title}
@@ -296,9 +368,12 @@ function CorpusCheckPage() {
                         <p className="text-sm text-slate-600">
                           Document ID: {item.candidate_document_id} | Extension: {item.candidate_extension}
                         </p>
+                        <p className="text-xs text-slate-500 mt-1 break-all">
+                          Candidate Scope: {item.candidate_scope_key}
+                        </p>
                       </div>
 
-                      <div className="text-right">
+                      <div className="text-right flex flex-col gap-2 items-start md:items-end">
                         <p className="text-2xl font-bold">{item.overall_percentage}%</p>
                         <StatusBadge
                           label={item.similarity_label}
@@ -310,6 +385,13 @@ function CorpusCheckPage() {
                               : 'success'
                           }
                         />
+                        <StatusBadge
+                          label={item.same_scope ? 'Same Scope' : 'Different Scope'}
+                          type={item.same_scope ? 'success' : 'info'}
+                        />
+                        <p className="text-sm text-slate-600">
+                          Retrieval rank: {item.retrieval_rank_score}
+                        </p>
                       </div>
                     </div>
 
