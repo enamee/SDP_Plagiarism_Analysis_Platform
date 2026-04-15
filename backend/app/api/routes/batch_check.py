@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.models.document import DocumentRecord
 from app.schemas.batch import BatchCheckRequest, BatchCheckResponse
 from app.services.similarity import compare_two_documents
+from app.core.logger import log_event
 
 router = APIRouter(prefix="/api/batch-check", tags=["batch-check"])
 
@@ -32,6 +33,14 @@ def run_batch_check(payload: BatchCheckRequest, db: Session = Depends(get_db)):
            status_code=400,
            detail="max_pairs must be at least 1."
        )
+
+   log_event(
+        "batch_check.start",
+        "Batch check started",
+        selected_document_count=len(unique_ids),
+        min_similarity=payload.min_similarity,
+        max_pairs=payload.max_pairs,
+   )
 
    documents = []
    for document_id in unique_ids:
@@ -79,6 +88,14 @@ def run_batch_check(payload: BatchCheckRequest, db: Session = Depends(get_db)):
    top_results = pair_results[:payload.max_pairs]
 
    total_pairs_checked = len(list(combinations(documents, 2)))
+
+   log_event(
+           "batch_check.complete",
+           "Batch check completed",
+           selected_document_count=len(documents),
+           total_pairs_checked=total_pairs_checked,
+           returned_pairs=len(top_results),
+    )
 
    return {
        "selected_document_count": len(documents),

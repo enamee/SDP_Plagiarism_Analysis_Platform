@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import engine, get_db
 from app.services.fts_index import clear_documents_fts, delete_document_from_fts
 from app.models.document import DocumentRecord
+from app.core.logger import log_event
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -38,6 +39,13 @@ def delete_document(document_id: int, db: Session = Depends(get_db)):
 
    db.delete(document)
    db.commit()
+
+   log_event(
+        "admin.delete_document",
+        "Document deleted",
+        document_id=document.id,
+        title=document.title,
+   )
 
    return {
        "success": True,
@@ -71,6 +79,13 @@ def reset_all_data(db: Session = Depends(get_db)):
            if file_path.is_file() and file_path.suffix.lower() == ".pdf":
                safe_remove_file(file_path)
                deleted_reports += 1
+
+   log_event(
+       "admin.reset_data",
+       "All local demo data reset",
+       deleted_documents=deleted_documents,
+       deleted_reports=deleted_reports,
+   )
 
    return {
        "success": True,

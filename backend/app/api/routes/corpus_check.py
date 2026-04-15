@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import engine, get_db
+from app.core.logger import log_event
 from app.models.document import DocumentRecord
 from app.schemas.corpus import CorpusCheckResponse
 from app.services.retrieval import run_fts_shortlist
@@ -36,6 +37,17 @@ def run_corpus_check(
             detail="Source document has no extracted text."
         )
 
+    log_event(
+        "corpus_check.start",
+        "Detailed corpus check started",
+        source_document_id=source_document.id,
+        source_title=source_document.title,
+        result_top_k=result_top_k,
+        shortlist_top_k=shortlist_top_k,
+        same_scope_first=same_scope_first,
+        scope_only=scope_only,
+    )
+
     shortlist = run_fts_shortlist(
         db=db,
         engine=engine,
@@ -46,6 +58,13 @@ def run_corpus_check(
     )
 
     if not shortlist["results"]:
+        log_event(
+            "corpus_check.complete",
+            "Detailed corpus check completed with no shortlist candidates",
+            source_document_id=source_document.id,
+            returned_candidates=0,
+        )
+
         return {
             "source_document_id": source_document.id,
             "source_document_title": source_document.title,
@@ -96,6 +115,16 @@ def run_corpus_check(
     )
 
     top_results = ranked_results[:result_top_k]
+
+    log_event(
+        "corpus_check.complete",
+        "Detailed corpus check completed",
+        source_document_id=source_document.id,
+        shortlist_candidates_retrieved=len(shortlist["results"]),
+        detailed_candidates_checked=len(ranked_results),
+        returned_candidates=len(top_results),
+        fts_query=shortlist["fts_query"],
+    )
 
     return {
         "source_document_id": source_document.id,

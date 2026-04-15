@@ -23,6 +23,7 @@ function AppLayout({ children }) {
             <SidebarLink to="/batch-check" label="Batch Check" />
             <SidebarLink to="/graph" label="Similarity Graph" />
             <SidebarLink to="/reports" label="Reports" />
+            <SidebarLink to="/debug" label="Debug Logs" />
           </nav>
         </aside>
 

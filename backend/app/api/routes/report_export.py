@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.models.document import DocumentRecord
 from app.services.report_generator import generate_comparison_report_pdf
 from app.services.similarity import compare_two_documents
+from app.core.logger import log_event
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
@@ -48,6 +49,14 @@ def download_comparison_report(
        overall_percentage=comparison["overall_percentage"],
        similarity_label=comparison["similarity_label"],
        top_matches=comparison["top_matches"],
+   )
+
+   log_event(
+        "report_export.complete",
+        "Comparison PDF report generated",
+        document_a_id=document_a.id,
+        document_b_id=document_b.id,
+        filename=filename,
    )
 
    return FileResponse(

@@ -17,6 +17,7 @@ from app.services.preprocessing import (
     tokenize_words,
 )
 from app.services.text_extractor import extract_text_from_file
+from app.core.logger import log_event
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -63,6 +64,15 @@ async def upload_document(
 
     scope_key = build_scope_key(comparison_group)
 
+    log_event(
+        "upload.start",
+        "Document upload started",
+        title=title,
+        comparison_group=comparison_group,
+        document_type=document_type,
+        input_mode=input_mode,
+    )
+
     if input_mode == "file":
         if file is None:
             raise HTTPException(status_code=400, detail="Please choose a file.")
@@ -104,6 +114,14 @@ async def upload_document(
 
         await file.close()
 
+        if extraction_warning:
+            log_event(
+                "upload.warning",
+                "Document extraction warning generated",
+                title=title,
+                warning=extraction_warning,
+            )
+
         document_record = DocumentRecord(
             title=title,
             comparison_group=comparison_group,
@@ -131,6 +149,17 @@ async def upload_document(
         db.refresh(document_record)
 
         upsert_document_in_fts(engine, document_record)
+
+        log_event(
+            "upload.complete",
+            "File upload processed successfully",
+            document_id=document_record.id,
+            title=document_record.title,
+            scope_key=document_record.scope_key,
+            extracted_char_count=document_record.extracted_char_count,
+            sentence_count=document_record.sentence_count,
+            token_count=document_record.token_count,
+        )
 
         return {
             "success": True,
@@ -212,6 +241,17 @@ async def upload_document(
     db.refresh(document_record)
 
     upsert_document_in_fts(engine, document_record)
+
+    log_event(
+        "upload.complete",
+        "Manual text upload processed successfully",
+        document_id=document_record.id,
+        title=document_record.title,
+        scope_key=document_record.scope_key,
+        extracted_char_count=document_record.extracted_char_count,
+        sentence_count=document_record.sentence_count,
+        token_count=document_record.token_count,
+    )
 
     return {
         "success": True,

@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.models.document import DocumentRecord
 from app.schemas.graph import GraphRequest, GraphResponse
 from app.services.similarity import compute_document_similarity
+from app.core.logger import log_event
 
 router = APIRouter(prefix="/api/graph", tags=["graph"])
 
@@ -19,6 +20,13 @@ def generate_similarity_graph(payload: GraphRequest, db: Session = Depends(get_d
             status_code=400,
             detail="min_similarity must be between 0 and 1."
         )
+
+    log_event(
+        "graph.start",
+        "Similarity graph generation started",
+        selected_document_count=len(payload.document_ids),
+        min_similarity=payload.min_similarity,
+    )
 
     # If no IDs are provided, use all documents
     if payload.document_ids:
@@ -75,6 +83,13 @@ def generate_similarity_graph(payload: GraphRequest, db: Session = Depends(get_d
                 "similarity": round(similarity, 4),
                 "percentage": round(similarity * 100, 2),
             })
+
+    log_event(
+        "graph.complete",
+        "Similarity graph generation completed",
+        node_count=len(nodes),
+        edge_count=len(edges),
+    )
 
     return {
         "node_count": len(nodes),

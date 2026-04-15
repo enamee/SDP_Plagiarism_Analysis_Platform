@@ -229,3 +229,28 @@ export async function downloadComparisonReport(documentAId, documentBId) {
 
  window.URL.revokeObjectURL(downloadUrl)
 }
+
+export async function getDebugLogs(limit = 200) {
+  const response = await fetch(`${API_BASE_URL}/api/debug/logs?limit=${Number(limit)}`)
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to fetch debug logs.')
+  }
+
+  return data
+}
+
+export async function clearDebugLogs() {
+  const response = await fetch(`${API_BASE_URL}/api/debug/logs`, {
+    method: 'DELETE',
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to clear debug logs.')
+  }
+
+  return data
+}

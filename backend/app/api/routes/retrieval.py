@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import engine, get_db
+from app.core.logger import log_event
 from app.models.document import DocumentRecord
 from app.schemas.retrieval import ShortlistResponse
 from app.services.retrieval import run_fts_shortlist
@@ -28,6 +29,16 @@ def get_shortlist(
     if not source_document.extracted_text.strip():
         raise HTTPException(status_code=400, detail="Source document has no extracted text.")
 
+    log_event(
+        "retrieval.start",
+        "Shortlist retrieval started",
+        source_document_id=source_document.id,
+        source_title=source_document.title,
+        top_k=top_k,
+        same_scope_first=same_scope_first,
+        scope_only=scope_only,
+    )
+
     shortlist = run_fts_shortlist(
         db=db,
         engine=engine,
@@ -35,6 +46,14 @@ def get_shortlist(
         top_k=top_k,
         same_scope_first=same_scope_first,
         scope_only=scope_only,
+    )
+
+    log_event(
+        "retrieval.complete",
+        "Shortlist retrieval completed",
+        source_document_id=source_document.id,
+        returned_candidates=len(shortlist["results"]),
+        fts_query=shortlist["fts_query"],
     )
 
     return {

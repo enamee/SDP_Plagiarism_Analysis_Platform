@@ -7,6 +7,7 @@ import CorpusCheckPage from './pages/CorpusCheckPage'
 import BatchCheckPage from './pages/BatchCheckPage'
 import GraphPage from './pages/GraphPage'
 import ReportsPage from './pages/ReportsPage'
+import DebugLogsPage from './pages/DebugLogsPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
         <Route path="/batch-check" element={<BatchCheckPage />} />
         <Route path="/graph" element={<GraphPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/debug" element={<DebugLogsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppLayout>
