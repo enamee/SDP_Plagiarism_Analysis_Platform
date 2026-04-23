@@ -1,16 +1,18 @@
 import re
+import unicodedata
 
 
 def normalize_text(text: str) -> str:
     """
-    Lowercase, remove punctuation noise, and compress whitespace.
+    Lowercase, keep English/Bangla letters, and compress whitespace.
     """
     if not text:
         return ""
 
+    text = unicodedata.normalize("NFKC", text)
     text = text.lower()
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = re.sub(r"[^a-z0-9\s]", " ", text)
+    text = re.sub(r"[^a-z0-9\u0980-\u09ff\s]", " ", text)
     text = re.sub(r"\s+", " ", text)
 
     return text.strip()
@@ -18,7 +20,7 @@ def normalize_text(text: str) -> str:
 
 def split_into_sentences(text: str) -> list[str]:
     """
-    Simple sentence splitting for version 1.
+    Simple sentence splitting for English and Bangla text.
     """
     if not text:
         return []
@@ -27,18 +29,18 @@ def split_into_sentences(text: str) -> list[str]:
     if not text:
         return []
 
-    sentences = re.split(r'(?<=[.!?])\s+', text)
+    sentences = re.split(r'(?<=[.!?।])\s+', text)
     return [sentence.strip() for sentence in sentences if sentence.strip()]
 
 
 def tokenize_words(text: str) -> list[str]:
     """
-    Basic word tokenizer for English text.
+    Basic word tokenizer for English and Bangla text.
     """
     if not text:
         return []
 
-    return re.findall(r"[a-z0-9']+", text.lower())
+    return re.findall(r"[a-z0-9'\u0980-\u09ff]+", text.lower())
 
 
 def prepare_sentences_for_matching(text: str, min_length: int = 20) -> list[str]:
