@@ -1,6 +1,7 @@
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getDocuments, runBatchCheck } from '../services/documentService'
 
 function BatchCheckPage() {
@@ -210,7 +211,12 @@ function BatchCheckPage() {
                  >
                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                      <div>
-                       <p className="text-sm text-slate-500">Rank #{index + 1}</p>
+                       <Link
+                         to={`/compare?documentAId=${pair.document_a_id}&documentBId=${pair.document_b_id}`}
+                         className="text-sm text-blue-700 hover:underline"
+                       >
+                         Rank #{index + 1}
+                       </Link>
                        <h4 className="text-lg font-semibold">
                          {pair.document_a_title} ↔ {pair.document_b_title}
                        </h4>
@@ -231,6 +237,13 @@ function BatchCheckPage() {
                             : 'success'
                         }
                         />
+
+                       <Link
+                         to={`/compare?documentAId=${pair.document_a_id}&documentBId=${pair.document_b_id}`}
+                         className="inline-block mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
+                       >
+                         View Details
+                       </Link>
 
                      </div>
                    </div>

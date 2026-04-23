@@ -42,7 +42,12 @@ def compare_documents(payload: CompareDocumentsRequest, db: Session = Depends(ge
         document_b_title=document_b.title,
     )
 
-    result = compare_two_documents(document_a.extracted_text, document_b.extracted_text)
+    result = compare_two_documents(
+        document_a.extracted_text,
+        document_b.extracted_text,
+        sentence_top_k=None,
+        max_sentences_per_document=None,
+    )
 
     log_event(
         "comparison.complete",

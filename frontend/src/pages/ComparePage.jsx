@@ -1,6 +1,7 @@
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
  compareDocuments,
  downloadComparisonReport,
@@ -63,6 +64,7 @@ function HighlightedTextPanel({ title, text, matchedSentences }) {
 }
 
 function ComparePage() {
+ const [searchParams] = useSearchParams()
  const [documents, setDocuments] = useState([])
  const [documentAId, setDocumentAId] = useState('')
  const [documentBId, setDocumentBId] = useState('')
@@ -72,6 +74,11 @@ function ComparePage() {
  const [result, setResult] = useState(null)
  const [documentADetail, setDocumentADetail] = useState(null)
  const [documentBDetail, setDocumentBDetail] = useState(null)
+ const [lastAutoComparedQueryKey, setLastAutoComparedQueryKey] = useState('')
+
+ const queryDocumentAId = searchParams.get('documentAId')
+ const queryDocumentBId = searchParams.get('documentBId')
+ const comparisonQueryKey = `${queryDocumentAId || ''}:${queryDocumentBId || ''}`
 
  useEffect(() => {
    async function loadDocuments() {
@@ -89,19 +96,18 @@ function ComparePage() {
    loadDocuments()
  }, [])
 
- const handleCompare = async (event) => {
-   event.preventDefault()
+ const runComparison = async (selectedDocumentAId, selectedDocumentBId) => {
    setError('')
    setResult(null)
    setDocumentADetail(null)
    setDocumentBDetail(null)
 
-   if (!documentAId || !documentBId) {
+   if (!selectedDocumentAId || !selectedDocumentBId) {
      setError('Please select both documents.')
      return
    }
 
-   if (documentAId === documentBId) {
+   if (selectedDocumentAId === selectedDocumentBId) {
      setError('Please choose two different documents.')
      return
    }
@@ -110,9 +116,9 @@ function ComparePage() {
      setComparing(true)
 
      const [comparisonResult, docA, docB] = await Promise.all([
-       compareDocuments(documentAId, documentBId),
-       getDocumentById(documentAId),
-       getDocumentById(documentBId),
+       compareDocuments(selectedDocumentAId, selectedDocumentBId),
+       getDocumentById(selectedDocumentAId),
+       getDocumentById(selectedDocumentBId),
      ])
 
      setResult(comparisonResult)
@@ -124,6 +130,46 @@ function ComparePage() {
      setComparing(false)
    }
  }
+
+ const handleCompare = async (event) => {
+   event.preventDefault()
+   await runComparison(documentAId, documentBId)
+ }
+
+ useEffect(() => {
+   if (loadingDocuments) {
+     return
+   }
+
+   if (!queryDocumentAId || !queryDocumentBId) {
+     return
+   }
+
+   if (comparisonQueryKey === lastAutoComparedQueryKey) {
+     return
+   }
+
+   const documentAExists = documents.some((doc) => String(doc.id) === queryDocumentAId)
+   const documentBExists = documents.some((doc) => String(doc.id) === queryDocumentBId)
+
+   if (!documentAExists || !documentBExists) {
+     setError('Selected comparison documents were not found.')
+     setLastAutoComparedQueryKey(comparisonQueryKey)
+     return
+   }
+
+   setDocumentAId(queryDocumentAId)
+   setDocumentBId(queryDocumentBId)
+   setLastAutoComparedQueryKey(comparisonQueryKey)
+   runComparison(queryDocumentAId, queryDocumentBId)
+ }, [
+   comparisonQueryKey,
+   documents,
+   lastAutoComparedQueryKey,
+   loadingDocuments,
+   queryDocumentAId,
+   queryDocumentBId,
+ ])
   const handleDownloadReport = async () => {
    setError('')
 
@@ -272,7 +318,10 @@ function ComparePage() {
          </div>
 
          <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
-           <h3 className="text-xl font-semibold mb-4">Top Matching Sentences</h3>
+           <h3 className="text-xl font-semibold mb-2">All Matching Sentences</h3>
+           <p className="text-sm text-slate-600 mb-4">
+             Total matching sentence pairs found: {result.top_matches.length}
+           </p>
 
            {result.top_matches.length === 0 ? (
             <EmptyState

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import { getDocuments, getShortlist, runCorpusCheck } from '../services/documentService'
@@ -269,7 +270,12 @@ function CorpusCheckPage() {
                   >
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                       <div>
-                        <p className="text-sm text-slate-500">Rank #{index + 1}</p>
+                        <Link
+                          to={`/compare?documentAId=${selectedDocumentId}&documentBId=${item.document_id}`}
+                          className="text-sm text-blue-700 hover:underline"
+                        >
+                          Rank #{index + 1}
+                        </Link>
                         <h4 className="text-lg font-semibold">{item.title}</h4>
                         <p className="text-sm text-slate-600">
                           ID: {item.document_id} | Group: {item.comparison_group} | Type: {item.document_type}
@@ -287,6 +293,12 @@ function CorpusCheckPage() {
                         <p className="text-sm text-slate-600">
                           Retrieval rank score: {item.rank_score}
                         </p>
+                        <Link
+                          to={`/compare?documentAId=${selectedDocumentId}&documentBId=${item.document_id}`}
+                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
+                        >
+                          View Details
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -359,9 +371,12 @@ function CorpusCheckPage() {
                   >
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                       <div>
-                        <p className="text-sm text-slate-500">
+                        <Link
+                          to={`/compare?documentAId=${result.source_document_id}&documentBId=${item.candidate_document_id}`}
+                          className="text-sm text-blue-700 hover:underline"
+                        >
                           Final Rank #{index + 1}
-                        </p>
+                        </Link>
                         <h4 className="text-lg font-semibold">
                           {item.candidate_title}
                         </h4>
@@ -392,6 +407,12 @@ function CorpusCheckPage() {
                         <p className="text-sm text-slate-600">
                           Retrieval rank: {item.retrieval_rank_score}
                         </p>
+                        <Link
+                          to={`/compare?documentAId=${result.source_document_id}&documentBId=${item.candidate_document_id}`}
+                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
+                        >
+                          View Details
+                        </Link>
                       </div>
                     </div>
 

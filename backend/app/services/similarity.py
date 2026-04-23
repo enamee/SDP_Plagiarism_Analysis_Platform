@@ -29,8 +29,9 @@ def compute_document_similarity(text_a: str, text_b: str) -> float:
 def find_top_sentence_matches(
    text_a: str,
    text_b: str,
-   top_k: int = 5,
+    top_k: int | None = 5,
    threshold: float = 0.2,
+    max_sentences_per_document: int | None = 50,
 ) -> list[dict]:
    sentences_a = prepare_sentences_for_matching(text_a)
    sentences_b = prepare_sentences_for_matching(text_b)
@@ -38,9 +39,10 @@ def find_top_sentence_matches(
    if not sentences_a or not sentences_b:
        return []
 
-   # Safety cap for version 1 so very large docs do not become too slow
-   sentences_a = sentences_a[:50]
-   sentences_b = sentences_b[:50]
+   if max_sentences_per_document is not None:
+       # Safety cap for version 1 so very large docs do not become too slow
+       sentences_a = sentences_a[:max_sentences_per_document]
+       sentences_b = sentences_b[:max_sentences_per_document]
 
    vectorizer = TfidfVectorizer(ngram_range=(1, 2))
    combined = sentences_a + sentences_b
@@ -83,19 +85,31 @@ def find_top_sentence_matches(
        used_a.add(item["index_a"])
        used_b.add(item["index_b"])
 
-       if len(selected) >= top_k:
+       if top_k is not None and len(selected) >= top_k:
            break
 
    return selected
 
 
-def compare_two_documents(text_a: str, text_b: str) -> dict:
-   overall_score = compute_document_similarity(text_a, text_b)
-   top_matches = find_top_sentence_matches(text_a, text_b)
+def compare_two_documents(
+    text_a: str,
+    text_b: str,
+    sentence_top_k: int | None = 5,
+    sentence_threshold: float = 0.2,
+    max_sentences_per_document: int | None = 50,
+) -> dict:
+    overall_score = compute_document_similarity(text_a, text_b)
+    top_matches = find_top_sentence_matches(
+         text_a,
+         text_b,
+         top_k=sentence_top_k,
+         threshold=sentence_threshold,
+         max_sentences_per_document=max_sentences_per_document,
+    )
 
-   return {
-       "overall_similarity": round(overall_score, 4),
-       "overall_percentage": round(overall_score * 100, 2),
-       "similarity_label": classify_similarity(overall_score),
-       "top_matches": top_matches,
+    return {
+        "overall_similarity": round(overall_score, 4),
+        "overall_percentage": round(overall_score * 100, 2),
+        "similarity_label": classify_similarity(overall_score),
+        "top_matches": top_matches,
    }
