@@ -55,3 +55,10 @@ class DocumentDetail(BaseModel):
     extraction_warning: str | None
 
     created_at: datetime
+
+
+class DocumentMetadataUpdateRequest(BaseModel):
+    title: str
+    comparison_group: str
+    document_type: str
+    topic_tag: str | None = None

@@ -4,8 +4,7 @@ from pydantic import BaseModel
 class ShortlistCandidate(BaseModel):
     document_id: int
     title: str
-    course_code: str
-    assignment_name: str
+    comparison_group: str
     document_type: str
     scope_key: str
     extension: str

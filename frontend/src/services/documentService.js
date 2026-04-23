@@ -95,6 +95,24 @@ export async function getDocumentById(documentId) {
  return data
 }
 
+export async function updateDocumentMetadata(documentId, payload) {
+ const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/metadata`, {
+   method: 'PUT',
+   headers: {
+     'Content-Type': 'application/json',
+   },
+   body: JSON.stringify(payload),
+ })
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Failed to update document metadata.')
+ }
+
+ return data
+}
+
 export async function compareDocuments(documentAId, documentBId) {
  const response = await fetch(`${API_BASE_URL}/api/compare/documents`, {
    method: 'POST',
