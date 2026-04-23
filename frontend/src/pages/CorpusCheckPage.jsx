@@ -2,24 +2,29 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
+import { getCachedPageState, setCachedPageState } from '../services/pageStateCache'
 import { getDocuments, getShortlist, runCorpusCheck } from '../services/documentService'
 
-function CorpusCheckPage() {
-  const [documents, setDocuments] = useState([])
-  const [selectedDocumentId, setSelectedDocumentId] = useState('')
+const PAGE_CACHE_KEY = 'corpus-check'
 
-  const [resultTopK, setResultTopK] = useState(5)
-  const [shortlistTopK, setShortlistTopK] = useState(20)
-  const [sameScopeFirst, setSameScopeFirst] = useState(true)
-  const [scopeOnly, setScopeOnly] = useState(false)
+function CorpusCheckPage() {
+  const cachedState = getCachedPageState(PAGE_CACHE_KEY) || {}
+
+  const [documents, setDocuments] = useState([])
+  const [selectedDocumentId, setSelectedDocumentId] = useState(cachedState.selectedDocumentId || '')
+
+  const [resultTopK, setResultTopK] = useState(cachedState.resultTopK ?? 5)
+  const [shortlistTopK, setShortlistTopK] = useState(cachedState.shortlistTopK ?? 20)
+  const [sameScopeFirst, setSameScopeFirst] = useState(cachedState.sameScopeFirst ?? true)
+  const [scopeOnly, setScopeOnly] = useState(cachedState.scopeOnly ?? false)
 
   const [loadingDocuments, setLoadingDocuments] = useState(true)
   const [runningShortlist, setRunningShortlist] = useState(false)
   const [runningCheck, setRunningCheck] = useState(false)
 
   const [error, setError] = useState('')
-  const [shortlistResult, setShortlistResult] = useState(null)
-  const [result, setResult] = useState(null)
+  const [shortlistResult, setShortlistResult] = useState(cachedState.shortlistResult || null)
+  const [result, setResult] = useState(cachedState.result || null)
 
   useEffect(() => {
     async function loadDocuments() {
@@ -36,6 +41,26 @@ function CorpusCheckPage() {
 
     loadDocuments()
   }, [])
+
+  useEffect(() => {
+    setCachedPageState(PAGE_CACHE_KEY, {
+      selectedDocumentId,
+      resultTopK,
+      shortlistTopK,
+      sameScopeFirst,
+      scopeOnly,
+      shortlistResult,
+      result,
+    })
+  }, [
+    result,
+    resultTopK,
+    sameScopeFirst,
+    scopeOnly,
+    selectedDocumentId,
+    shortlistResult,
+    shortlistTopK,
+  ])
 
   const handleRunShortlist = async (event) => {
     event.preventDefault()
@@ -270,12 +295,7 @@ function CorpusCheckPage() {
                   >
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                       <div>
-                        <Link
-                          to={`/compare?documentAId=${selectedDocumentId}&documentBId=${item.document_id}`}
-                          className="text-sm text-blue-700 hover:underline"
-                        >
-                          Rank #{index + 1}
-                        </Link>
+                        <p className="text-sm text-slate-500">Rank #{index + 1}</p>
                         <h4 className="text-lg font-semibold">{item.title}</h4>
                         <p className="text-sm text-slate-600">
                           ID: {item.document_id} | Group: {item.comparison_group} | Type: {item.document_type}
@@ -293,12 +313,6 @@ function CorpusCheckPage() {
                         <p className="text-sm text-slate-600">
                           Retrieval rank score: {item.rank_score}
                         </p>
-                        <Link
-                          to={`/compare?documentAId=${selectedDocumentId}&documentBId=${item.document_id}`}
-                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
-                        >
-                          View Details
-                        </Link>
                       </div>
                     </div>
                   </div>
@@ -372,7 +386,19 @@ function CorpusCheckPage() {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                       <div>
                         <Link
-                          to={`/compare?documentAId=${result.source_document_id}&documentBId=${item.candidate_document_id}`}
+                          to="/comparison-details"
+                          state={{
+                            comparisonDetails: {
+                              documentAId: result.source_document_id,
+                              documentBId: item.candidate_document_id,
+                              documentATitle: result.source_document_title,
+                              documentBTitle: item.candidate_title,
+                              overallSimilarity: item.overall_similarity,
+                              overallPercentage: item.overall_percentage,
+                              similarityLabel: item.similarity_label,
+                              topMatches: item.top_matches,
+                            },
+                          }}
                           className="text-sm text-blue-700 hover:underline"
                         >
                           Final Rank #{index + 1}
@@ -408,7 +434,19 @@ function CorpusCheckPage() {
                           Retrieval rank: {item.retrieval_rank_score}
                         </p>
                         <Link
-                          to={`/compare?documentAId=${result.source_document_id}&documentBId=${item.candidate_document_id}`}
+                          to="/comparison-details"
+                          state={{
+                            comparisonDetails: {
+                              documentAId: result.source_document_id,
+                              documentBId: item.candidate_document_id,
+                              documentATitle: result.source_document_title,
+                              documentBTitle: item.candidate_title,
+                              overallSimilarity: item.overall_similarity,
+                              overallPercentage: item.overall_percentage,
+                              similarityLabel: item.similarity_label,
+                              topMatches: item.top_matches,
+                            },
+                          }}
                           className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
                         >
                           View Details
@@ -417,7 +455,7 @@ function CorpusCheckPage() {
                     </div>
 
                     <div>
-                      <h5 className="font-medium mb-3">Top Matching Sentences</h5>
+                      <h5 className="font-medium mb-3">All Matching Sentences</h5>
 
                       {item.top_matches.length === 0 ? (
                         <p className="text-sm text-slate-600">

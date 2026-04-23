@@ -40,7 +40,9 @@ def download_comparison_report(
 
    comparison = compare_two_documents(
        document_a.extracted_text,
-       document_b.extracted_text
+       document_b.extracted_text,
+       sentence_top_k=None,
+       max_sentences_per_document=None,
    )
 
    filepath, filename = generate_comparison_report_pdf(

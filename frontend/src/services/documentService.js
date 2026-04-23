@@ -202,32 +202,16 @@ export async function runStyleShiftAnalysis(documentId, chunkSize = 5, anomalyTh
 }
 
 export async function downloadComparisonReport(documentAId, documentBId) {
- const response = await fetch(
-   `${API_BASE_URL}/api/reports/comparison?document_a_id=${Number(documentAId)}&document_b_id=${Number(documentBId)}`
- )
-
- if (!response.ok) {
-   let errorMessage = 'Report download failed.'
-   try {
-     const data = await response.json()
-     errorMessage = data.detail || errorMessage
-   } catch {
-     // ignore JSON parsing error
-   }
-   throw new Error(errorMessage)
- }
-
- const blob = await response.blob()
- const downloadUrl = window.URL.createObjectURL(blob)
+ const downloadUrl = `${API_BASE_URL}/api/reports/comparison?document_a_id=${Number(documentAId)}&document_b_id=${Number(documentBId)}`
 
  const link = document.createElement('a')
  link.href = downloadUrl
  link.download = `comparison_report_${documentAId}_${documentBId}.pdf`
+ link.target = '_blank'
+ link.rel = 'noopener noreferrer'
  document.body.appendChild(link)
  link.click()
  link.remove()
-
- window.URL.revokeObjectURL(downloadUrl)
 }
 
 export async function getDebugLogs(limit = 200) {

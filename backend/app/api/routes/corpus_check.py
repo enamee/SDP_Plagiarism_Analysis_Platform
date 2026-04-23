@@ -93,7 +93,9 @@ def run_corpus_check(
 
         comparison = compare_two_documents(
             source_document.extracted_text,
-            candidate.extracted_text
+            candidate.extracted_text,
+            sentence_top_k=None,
+            max_sentences_per_document=None,
         )
 
         ranked_results.append({
@@ -106,7 +108,7 @@ def run_corpus_check(
             "overall_similarity": comparison["overall_similarity"],
             "overall_percentage": comparison["overall_percentage"],
             "similarity_label": comparison["similarity_label"],
-            "top_matches": comparison["top_matches"][:3],
+            "top_matches": comparison["top_matches"],
         })
 
     ranked_results.sort(

@@ -65,7 +65,9 @@ def run_batch_check(payload: BatchCheckRequest, db: Session = Depends(get_db)):
    for document_a, document_b in combinations(documents, 2):
        comparison = compare_two_documents(
            document_a.extracted_text,
-           document_b.extracted_text
+           document_b.extracted_text,
+           sentence_top_k=None,
+           max_sentences_per_document=None,
        )
 
        if comparison["overall_similarity"] >= payload.min_similarity:
@@ -77,7 +79,7 @@ def run_batch_check(payload: BatchCheckRequest, db: Session = Depends(get_db)):
                "overall_similarity": comparison["overall_similarity"],
                "overall_percentage": comparison["overall_percentage"],
                "similarity_label": comparison["similarity_label"],
-               "top_matches": comparison["top_matches"][:3],
+               "top_matches": comparison["top_matches"],
            })
 
    pair_results.sort(

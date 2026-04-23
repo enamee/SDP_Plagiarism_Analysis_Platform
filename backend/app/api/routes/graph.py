@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.document import DocumentRecord
 from app.schemas.graph import GraphRequest, GraphResponse
-from app.services.similarity import compute_document_similarity
+from app.services.similarity import compare_two_documents
 from app.core.logger import log_event
 
 router = APIRouter(prefix="/api/graph", tags=["graph"])
@@ -71,17 +71,24 @@ def generate_similarity_graph(payload: GraphRequest, db: Session = Depends(get_d
     edges = []
 
     for document_a, document_b in combinations(documents, 2):
-        similarity = compute_document_similarity(
+        comparison = compare_two_documents(
             document_a.extracted_text,
-            document_b.extracted_text
+            document_b.extracted_text,
+            sentence_top_k=None,
+            max_sentences_per_document=None,
         )
+        similarity = comparison["overall_similarity"]
 
         if similarity >= payload.min_similarity:
             edges.append({
                 "source": document_a.id,
                 "target": document_b.id,
-                "similarity": round(similarity, 4),
-                "percentage": round(similarity * 100, 2),
+                "source_title": document_a.title,
+                "target_title": document_b.title,
+                "similarity": comparison["overall_similarity"],
+                "percentage": comparison["overall_percentage"],
+                "similarity_label": comparison["similarity_label"],
+                "top_matches": comparison["top_matches"],
             })
 
     log_event(

@@ -2,17 +2,22 @@ import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getCachedPageState, setCachedPageState } from '../services/pageStateCache'
 import { getDocuments, runBatchCheck } from '../services/documentService'
 
+const PAGE_CACHE_KEY = 'batch-check'
+
 function BatchCheckPage() {
+ const cachedState = getCachedPageState(PAGE_CACHE_KEY) || {}
+
  const [documents, setDocuments] = useState([])
- const [selectedIds, setSelectedIds] = useState([])
- const [minSimilarity, setMinSimilarity] = useState(0.2)
- const [maxPairs, setMaxPairs] = useState(20)
+ const [selectedIds, setSelectedIds] = useState(cachedState.selectedIds || [])
+ const [minSimilarity, setMinSimilarity] = useState(cachedState.minSimilarity ?? 0.2)
+ const [maxPairs, setMaxPairs] = useState(cachedState.maxPairs ?? 20)
  const [loadingDocuments, setLoadingDocuments] = useState(true)
  const [runningCheck, setRunningCheck] = useState(false)
  const [error, setError] = useState('')
- const [result, setResult] = useState(null)
+ const [result, setResult] = useState(cachedState.result || null)
 
  useEffect(() => {
    async function loadDocuments() {
@@ -29,6 +34,15 @@ function BatchCheckPage() {
 
    loadDocuments()
  }, [])
+
+ useEffect(() => {
+   setCachedPageState(PAGE_CACHE_KEY, {
+     selectedIds,
+     minSimilarity,
+     maxPairs,
+     result,
+   })
+ }, [maxPairs, minSimilarity, result, selectedIds])
 
  const handleToggleDocument = (documentId) => {
    setSelectedIds((prev) =>
@@ -212,7 +226,19 @@ function BatchCheckPage() {
                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                      <div>
                        <Link
-                         to={`/compare?documentAId=${pair.document_a_id}&documentBId=${pair.document_b_id}`}
+                         to="/comparison-details"
+                         state={{
+                           comparisonDetails: {
+                             documentAId: pair.document_a_id,
+                             documentBId: pair.document_b_id,
+                             documentATitle: pair.document_a_title,
+                             documentBTitle: pair.document_b_title,
+                             overallSimilarity: pair.overall_similarity,
+                             overallPercentage: pair.overall_percentage,
+                             similarityLabel: pair.similarity_label,
+                             topMatches: pair.top_matches,
+                           },
+                         }}
                          className="text-sm text-blue-700 hover:underline"
                        >
                          Rank #{index + 1}
@@ -239,7 +265,19 @@ function BatchCheckPage() {
                         />
 
                        <Link
-                         to={`/compare?documentAId=${pair.document_a_id}&documentBId=${pair.document_b_id}`}
+                         to="/comparison-details"
+                         state={{
+                           comparisonDetails: {
+                             documentAId: pair.document_a_id,
+                             documentBId: pair.document_b_id,
+                             documentATitle: pair.document_a_title,
+                             documentBTitle: pair.document_b_title,
+                             overallSimilarity: pair.overall_similarity,
+                             overallPercentage: pair.overall_percentage,
+                             similarityLabel: pair.similarity_label,
+                             topMatches: pair.top_matches,
+                           },
+                         }}
                          className="inline-block mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
                        >
                          View Details
@@ -249,7 +287,7 @@ function BatchCheckPage() {
                    </div>
 
                    <div>
-                     <h5 className="font-medium mb-3">Top Matching Sentences</h5>
+                     <h5 className="font-medium mb-3">All Matching Sentences</h5>
 
                      {pair.top_matches.length === 0 ? (
                        <p className="text-sm text-slate-600">
