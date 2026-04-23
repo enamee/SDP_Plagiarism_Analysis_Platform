@@ -287,7 +287,7 @@ function BatchCheckPage() {
                    </div>
 
                    <div>
-                     <h5 className="font-medium mb-3">All Matching Sentences</h5>
+                     <h5 className="font-medium mb-3">Top Matching Sentences</h5>
 
                      {pair.top_matches.length === 0 ? (
                        <p className="text-sm text-slate-600">
@@ -295,7 +295,7 @@ function BatchCheckPage() {
                        </p>
                      ) : (
                        <div className="space-y-3">
-                         {pair.top_matches.map((match, matchIndex) => (
+                         {pair.top_matches.slice(0, 3).map((match, matchIndex) => (
                            <div
                              key={matchIndex}
                              className="rounded-xl border border-slate-200 bg-white p-4"
