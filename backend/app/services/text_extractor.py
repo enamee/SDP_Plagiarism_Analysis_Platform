@@ -2,7 +2,13 @@ from pathlib import Path
 import re
 
 import pdfplumber
+import pypdfium2 as pdfium
 from docx import Document
+
+try:
+    import pytesseract
+except Exception:  # pragma: no cover - optional dependency at runtime
+    pytesseract = None
 
 
 def clean_text(text: str) -> str:
@@ -96,6 +102,38 @@ def extract_text_from_pdf(file_path: Path) -> str:
     return clean_text("\n\n".join(extracted_pages))
 
 
+def extract_text_from_pdf_with_ocr(
+    file_path: Path,
+    tesseract_lang: str = "eng+ben",
+) -> tuple[str, str | None]:
+    if pytesseract is None:
+        return "", "OCR fallback unavailable: pytesseract is not installed."
+
+    ocr_pages = []
+
+    try:
+        pdf = pdfium.PdfDocument(str(file_path))
+    except Exception:
+        return "", "OCR fallback failed: could not open PDF for image rendering."
+
+    try:
+        for page in pdf:
+            page_image = page.render(scale=2.0).to_pil()
+            page_text = pytesseract.image_to_string(page_image, lang=tesseract_lang)
+            if page_text.strip():
+                ocr_pages.append(page_text)
+    except Exception as exc:
+        return "", f"OCR fallback failed: {exc}"
+    finally:
+        pdf.close()
+
+    ocr_text = clean_text("\n\n".join(ocr_pages))
+    if ocr_text:
+        return ocr_text, "Text extracted using OCR fallback (scanned/image-based PDF)."
+
+    return "", "No text could be extracted from this PDF, including OCR fallback."
+
+
 def extract_text_from_file(file_path: Path, extension: str) -> tuple[str, str | None]:
     extension = extension.lower()
 
@@ -113,6 +151,11 @@ def extract_text_from_file(file_path: Path, extension: str) -> tuple[str, str | 
         text = extract_text_from_pdf(file_path)
         if text:
             return text, None
-        return "", "No text could be extracted from this PDF. It may be scanned or image-based."
+
+        ocr_text, ocr_warning = extract_text_from_pdf_with_ocr(file_path)
+        if ocr_text:
+            return ocr_text, ocr_warning
+
+        return "", ocr_warning
 
     return "", "Unsupported file format."
