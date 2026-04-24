@@ -9,7 +9,7 @@ function AppLayout({ children }) {
         </h1>
       </header>
 
-      <div className="flex min-h-[calc(100vh-64px)]">
+      <div className="flex min-h-[calc(100vh-64px)] overflow-x-hidden">
         <aside className="w-64 bg-white border-r border-slate-200 p-4">
           <h2 className="text-sm font-bold text-slate-500 uppercase mb-4">
             Navigation
@@ -27,7 +27,7 @@ function AppLayout({ children }) {
           </nav>
         </aside>
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 min-w-0 p-6">
           {children}
         </main>
       </div>

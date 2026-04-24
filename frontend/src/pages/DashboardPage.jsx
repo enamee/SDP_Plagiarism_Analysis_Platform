@@ -447,7 +447,7 @@ function DashboardPage() {
        )}
 
        {!loading && documents.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
             <div className="w-full lg:max-w-2xl">
               <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -485,7 +485,7 @@ function DashboardPage() {
               description="Try a different search query to see matching rows."
             />
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="w-full overflow-x-auto rounded-lg border border-slate-200">
               <table className="min-w-[1400px] w-full border-collapse">
                 <thead className="bg-slate-100">
                   <tr>
