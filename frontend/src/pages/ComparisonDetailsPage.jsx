@@ -12,10 +12,14 @@ function splitTextIntoDisplaySentences(text) {
 
   const normalizedText = text.replace(/\r\n/g, '\n')
 
-  return normalizedText
+  const sentences = normalizedText
     .split(/(?<=[.!?।॥])\s*|\n+/u)
     .map((sentence) => sentence.trim())
     .filter(Boolean)
+
+  // Filter out punctuation-only fragments that don't contain alphanumeric characters
+  // This matches the backend's preprocessing logic
+  return sentences.filter((sentence) => /[a-z0-9\u0980-\u09ff]/iu.test(sentence))
 }
 
 function normalizeSentence(sentence) {

@@ -113,6 +113,23 @@ export async function updateDocumentMetadata(documentId, payload) {
  return data
 }
 
+export async function reprocessDocument(documentId) {
+ const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/reprocess`, {
+   method: 'PUT',
+   headers: {
+     'Content-Type': 'application/json',
+   },
+ })
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Failed to reprocess document.')
+ }
+
+ return data
+}
+
 export async function compareDocuments(documentAId, documentBId, useSemanticScoring = true) {
  const response = await fetch(`${API_BASE_URL}/api/compare/documents`, {
    method: 'POST',

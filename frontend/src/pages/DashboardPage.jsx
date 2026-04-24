@@ -7,6 +7,7 @@ import {
  getDocuments,
  resetAllDemoData,
  updateDocumentMetadata,
+ reprocessDocument,
 } from '../services/documentService'
 
 function isOcrSuccessMessage(extractionWarning) {
@@ -25,6 +26,7 @@ function DashboardPage() {
  const [error, setError] = useState('')
  const [actionMessage, setActionMessage] = useState('')
  const [deletingId, setDeletingId] = useState(null)
+ const [reprocessingId, setReprocessingId] = useState(null)
  const [resettingAll, setResettingAll] = useState(false)
  const [editingDocument, setEditingDocument] = useState(null)
  const [editTitle, setEditTitle] = useState('')
@@ -95,6 +97,26 @@ function DashboardPage() {
      setError(err.message)
    } finally {
      setResettingAll(false)
+   }
+ }
+
+ const handleReprocessDocument = async (documentId, title) => {
+   const confirmed = window.confirm(
+     `Re-extract and reprocess "${title}" using the latest extraction logic?`
+   )
+
+   if (!confirmed) return
+
+   try {
+     setActionMessage('')
+     setReprocessingId(documentId)
+     const data = await reprocessDocument(documentId)
+     setActionMessage(data.message)
+     await loadDashboardData()
+   } catch (err) {
+     setError(err.message)
+   } finally {
+     setReprocessingId(null)
    }
  }
 
@@ -373,6 +395,17 @@ function DashboardPage() {
                        >
                          Edit
                        </button>
+
+                       {doc.source_type === 'file' && (
+                         <button
+                           type="button"
+                           onClick={() => handleReprocessDocument(doc.id, doc.title)}
+                           disabled={reprocessingId === doc.id}
+                           className="rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-amber-50 hover:bg-amber-100 disabled:opacity-60"
+                         >
+                           {reprocessingId === doc.id ? 'Reprocessing...' : 'Reprocess'}
+                         </button>
+                       )}
 
                        <button
                          type="button"
