@@ -312,7 +312,7 @@ def _extract_layout_text_from_pdf_page_pymupdf(page) -> str:
         return page.get_text("text", sort=True) or ""
 
     lines_map: dict[tuple[int, int], list[tuple]] = {}
-    ordered_keys: list[tuple[int, int]] = []
+    line_bounds: dict[tuple[int, int], dict[str, float]] = {}
 
     for word in words:
         block_no = int(word[5])
@@ -321,11 +321,29 @@ def _extract_layout_text_from_pdf_page_pymupdf(page) -> str:
 
         if key not in lines_map:
             lines_map[key] = []
-            ordered_keys.append(key)
+            line_bounds[key] = {
+                "top": float(word[1]),
+                "bottom": float(word[3]),
+                "x0": float(word[0]),
+            }
 
         lines_map[key].append(word)
 
-    line_texts = []
+        line_bounds[key]["top"] = min(line_bounds[key]["top"], float(word[1]))
+        line_bounds[key]["bottom"] = max(line_bounds[key]["bottom"], float(word[3]))
+        line_bounds[key]["x0"] = min(line_bounds[key]["x0"], float(word[0]))
+
+    ordered_keys = sorted(
+        lines_map.keys(),
+        key=lambda item: (
+            line_bounds[item]["top"],
+            line_bounds[item]["x0"],
+            item[0],
+            item[1],
+        ),
+    )
+
+    rebuilt_lines: list[dict] = []
     for key in ordered_keys:
         line_words = sorted(lines_map[key], key=lambda item: float(item[0]))
         tokens = []
@@ -340,9 +358,35 @@ def _extract_layout_text_from_pdf_page_pymupdf(page) -> str:
         line_text = " ".join(tokens)
         line_text = re.sub(r"\s+([,.;:!?।॥)\]\}])", r"\1", line_text)
         line_text = re.sub(r"([([{])\s+", r"\1", line_text)
-        line_texts.append(line_text.strip())
 
-    return "\n".join(line_text for line_text in line_texts if line_text)
+        line_entry = {
+            "text": line_text.strip(),
+            "top": line_bounds[key]["top"],
+            "bottom": line_bounds[key]["bottom"],
+        }
+
+        if not line_entry["text"]:
+            continue
+
+        if not rebuilt_lines:
+            rebuilt_lines.append(line_entry)
+            continue
+
+        previous_line = rebuilt_lines[-1]
+        vertical_gap = line_entry["top"] - previous_line["bottom"]
+
+        if _should_join_pdf_lines(previous_line["text"], line_entry["text"], vertical_gap):
+            if previous_line["text"].endswith("-"):
+                previous_line["text"] = f"{previous_line['text'][:-1]}{line_entry['text'].lstrip()}"
+            else:
+                previous_line["text"] = f"{previous_line['text']} {line_entry['text']}"
+
+            previous_line["bottom"] = max(previous_line["bottom"], line_entry["bottom"])
+            continue
+
+        rebuilt_lines.append(line_entry)
+
+    return "\n".join(line["text"] for line in rebuilt_lines)
 
 
 def extract_text_from_pdf_pymupdf(file_path: Path) -> str:
