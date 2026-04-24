@@ -1,7 +1,11 @@
+from pathlib import Path
 import time
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from app.api.routes.admin_tools import router as admin_tools_router
 from app.api.routes.batch_check import router as batch_check_router

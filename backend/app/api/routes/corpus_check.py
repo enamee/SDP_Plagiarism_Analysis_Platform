@@ -18,6 +18,7 @@ def run_corpus_check(
     shortlist_top_k: int = 20,
     same_scope_first: bool = True,
     scope_only: bool = False,
+    use_semantic_scoring: bool | None = None,
     db: Session = Depends(get_db),
 ):
     if result_top_k < 1:
@@ -96,6 +97,7 @@ def run_corpus_check(
             candidate.extracted_text,
             sentence_top_k=None,
             max_sentences_per_document=None,
+            use_semantic_scoring=use_semantic_scoring,
         )
 
         ranked_results.append({

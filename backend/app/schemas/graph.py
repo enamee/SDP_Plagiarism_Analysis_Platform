@@ -6,6 +6,7 @@ from app.schemas.compare import SentenceMatch
 class GraphRequest(BaseModel):
     document_ids: list[int] = Field(default_factory=list)
     min_similarity: float = 0.2
+    use_semantic_scoring: bool | None = None
 
 
 class GraphNode(BaseModel):

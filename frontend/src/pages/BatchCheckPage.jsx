@@ -14,6 +14,7 @@ function BatchCheckPage() {
  const [selectedIds, setSelectedIds] = useState(cachedState.selectedIds || [])
  const [minSimilarity, setMinSimilarity] = useState(cachedState.minSimilarity ?? 0.2)
  const [maxPairs, setMaxPairs] = useState(cachedState.maxPairs ?? 20)
+ const [useSemanticScoring, setUseSemanticScoring] = useState(cachedState.useSemanticScoring ?? true)
  const [loadingDocuments, setLoadingDocuments] = useState(true)
  const [runningCheck, setRunningCheck] = useState(false)
  const [error, setError] = useState('')
@@ -40,9 +41,10 @@ function BatchCheckPage() {
      selectedIds,
      minSimilarity,
      maxPairs,
+     useSemanticScoring,
      result,
    })
- }, [maxPairs, minSimilarity, result, selectedIds])
+ }, [maxPairs, minSimilarity, result, selectedIds, useSemanticScoring])
 
  const handleToggleDocument = (documentId) => {
    setSelectedIds((prev) =>
@@ -74,7 +76,7 @@ function BatchCheckPage() {
 
    try {
      setRunningCheck(true)
-     const data = await runBatchCheck(selectedIds, minSimilarity, maxPairs)
+     const data = await runBatchCheck(selectedIds, minSimilarity, maxPairs, useSemanticScoring)
      setResult(data)
    } catch (err) {
      setError(err.message)
@@ -168,6 +170,16 @@ function BatchCheckPage() {
            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
              Selected documents: <strong>{selectedIds.length}</strong>
            </div>
+
+           <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+             <input
+               type="checkbox"
+               checked={useSemanticScoring}
+               onChange={(e) => setUseSemanticScoring(e.target.checked)}
+               className="h-4 w-4 rounded border-slate-300"
+             />
+             Use semantic scoring for pair comparison
+           </label>
 
            {error && (
              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">

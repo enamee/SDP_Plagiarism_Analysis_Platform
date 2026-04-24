@@ -17,6 +17,7 @@ function CorpusCheckPage() {
   const [shortlistTopK, setShortlistTopK] = useState(cachedState.shortlistTopK ?? 20)
   const [sameScopeFirst, setSameScopeFirst] = useState(cachedState.sameScopeFirst ?? true)
   const [scopeOnly, setScopeOnly] = useState(cachedState.scopeOnly ?? false)
+  const [useSemanticScoring, setUseSemanticScoring] = useState(cachedState.useSemanticScoring ?? true)
 
   const [loadingDocuments, setLoadingDocuments] = useState(true)
   const [runningShortlist, setRunningShortlist] = useState(false)
@@ -49,6 +50,7 @@ function CorpusCheckPage() {
       shortlistTopK,
       sameScopeFirst,
       scopeOnly,
+      useSemanticScoring,
       shortlistResult,
       result,
     })
@@ -57,6 +59,7 @@ function CorpusCheckPage() {
     resultTopK,
     sameScopeFirst,
     scopeOnly,
+    useSemanticScoring,
     selectedDocumentId,
     shortlistResult,
     shortlistTopK,
@@ -120,7 +123,8 @@ function CorpusCheckPage() {
         resultTopK,
         shortlistTopK,
         sameScopeFirst,
-        scopeOnly
+        scopeOnly,
+        useSemanticScoring
       )
       setResult(data)
     } catch (err) {
@@ -208,6 +212,15 @@ function CorpusCheckPage() {
                   onChange={(e) => setScopeOnly(e.target.checked)}
                 />
                 Restrict shortlist to same-scope documents only
+              </label>
+
+              <label className="flex items-center gap-3 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={useSemanticScoring}
+                  onChange={(e) => setUseSemanticScoring(e.target.checked)}
+                />
+                Use semantic scoring in detailed comparison
               </label>
             </div>
 

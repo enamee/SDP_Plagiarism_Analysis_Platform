@@ -7,6 +7,7 @@ class BatchCheckRequest(BaseModel):
    document_ids: list[int] = Field(min_length=2)
    min_similarity: float = 0.2
    max_pairs: int = 20
+   use_semantic_scoring: bool | None = None
 
 
 class BatchPairResult(BaseModel):

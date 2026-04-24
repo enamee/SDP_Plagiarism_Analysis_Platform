@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api/reports", tags=["reports"])
 def download_comparison_report(
    document_a_id: int,
    document_b_id: int,
+    use_semantic_scoring: bool | None = None,
    db: Session = Depends(get_db),
 ):
    if document_a_id == document_b_id:
@@ -43,6 +44,7 @@ def download_comparison_report(
        document_b.extracted_text,
        sentence_top_k=None,
        max_sentences_per_document=None,
+       use_semantic_scoring=use_semantic_scoring,
    )
 
    filepath, filename = generate_comparison_report_pdf(

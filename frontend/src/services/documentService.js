@@ -113,7 +113,7 @@ export async function updateDocumentMetadata(documentId, payload) {
  return data
 }
 
-export async function compareDocuments(documentAId, documentBId) {
+export async function compareDocuments(documentAId, documentBId, useSemanticScoring = true) {
  const response = await fetch(`${API_BASE_URL}/api/compare/documents`, {
    method: 'POST',
    headers: {
@@ -122,6 +122,7 @@ export async function compareDocuments(documentAId, documentBId) {
    body: JSON.stringify({
      document_a_id: Number(documentAId),
      document_b_id: Number(documentBId),
+     use_semantic_scoring: Boolean(useSemanticScoring),
    }),
  })
 
@@ -139,10 +140,11 @@ export async function runCorpusCheck(
   resultTopK = 5,
   shortlistTopK = 20,
   sameScopeFirst = true,
-  scopeOnly = false
+  scopeOnly = false,
+  useSemanticScoring = true
 ) {
   const response = await fetch(
-    `${API_BASE_URL}/api/corpus-check/${documentId}?result_top_k=${Number(resultTopK)}&shortlist_top_k=${Number(shortlistTopK)}&same_scope_first=${sameScopeFirst}&scope_only=${scopeOnly}`
+    `${API_BASE_URL}/api/corpus-check/${documentId}?result_top_k=${Number(resultTopK)}&shortlist_top_k=${Number(shortlistTopK)}&same_scope_first=${sameScopeFirst}&scope_only=${scopeOnly}&use_semantic_scoring=${Boolean(useSemanticScoring)}`
   )
 
   const data = await response.json()
@@ -154,7 +156,7 @@ export async function runCorpusCheck(
   return data
 }
 
-export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs = 20) {
+export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs = 20, useSemanticScoring = true) {
  const response = await fetch(`${API_BASE_URL}/api/batch-check`, {
    method: 'POST',
    headers: {
@@ -164,6 +166,7 @@ export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs =
      document_ids: documentIds.map((id) => Number(id)),
      min_similarity: Number(minSimilarity),
      max_pairs: Number(maxPairs),
+     use_semantic_scoring: Boolean(useSemanticScoring),
    }),
  })
 
@@ -176,7 +179,7 @@ export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs =
  return data
 }
 
-export async function generateGraph(documentIds = [], minSimilarity = 0.2) {
+export async function generateGraph(documentIds = [], minSimilarity = 0.2, useSemanticScoring = true) {
  const response = await fetch(`${API_BASE_URL}/api/graph`, {
    method: 'POST',
    headers: {
@@ -185,6 +188,7 @@ export async function generateGraph(documentIds = [], minSimilarity = 0.2) {
    body: JSON.stringify({
      document_ids: documentIds.map((id) => Number(id)),
      min_similarity: Number(minSimilarity),
+     use_semantic_scoring: Boolean(useSemanticScoring),
    }),
  })
 
@@ -219,8 +223,8 @@ export async function runStyleShiftAnalysis(documentId, chunkSize = 5, anomalyTh
  return data
 }
 
-export async function downloadComparisonReport(documentAId, documentBId) {
- const downloadUrl = `${API_BASE_URL}/api/reports/comparison?document_a_id=${Number(documentAId)}&document_b_id=${Number(documentBId)}`
+export async function downloadComparisonReport(documentAId, documentBId, useSemanticScoring = true) {
+ const downloadUrl = `${API_BASE_URL}/api/reports/comparison?document_a_id=${Number(documentAId)}&document_b_id=${Number(documentBId)}&use_semantic_scoring=${Boolean(useSemanticScoring)}`
 
  const link = document.createElement('a')
  link.href = downloadUrl

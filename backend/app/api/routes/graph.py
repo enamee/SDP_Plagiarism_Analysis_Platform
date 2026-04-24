@@ -76,6 +76,7 @@ def generate_similarity_graph(payload: GraphRequest, db: Session = Depends(get_d
             document_b.extracted_text,
             sentence_top_k=None,
             max_sentences_per_document=None,
+            use_semantic_scoring=payload.use_semantic_scoring,
         )
         similarity = comparison["overall_similarity"]
 

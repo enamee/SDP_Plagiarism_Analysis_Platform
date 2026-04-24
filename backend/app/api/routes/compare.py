@@ -47,6 +47,8 @@ def compare_documents(payload: CompareDocumentsRequest, db: Session = Depends(ge
         document_b.extracted_text,
         sentence_top_k=None,
         max_sentences_per_document=None,
+        use_semantic_scoring=payload.use_semantic_scoring,
+        include_debug=True,
     )
 
     log_event(
@@ -67,4 +69,5 @@ def compare_documents(payload: CompareDocumentsRequest, db: Session = Depends(ge
         "overall_percentage": result["overall_percentage"],
         "similarity_label": result["similarity_label"],
         "top_matches": result["top_matches"],
+        "debug": result.get("debug"),
     }

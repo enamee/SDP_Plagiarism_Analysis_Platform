@@ -68,6 +68,7 @@ def run_batch_check(payload: BatchCheckRequest, db: Session = Depends(get_db)):
            document_b.extracted_text,
            sentence_top_k=None,
            max_sentences_per_document=None,
+           use_semantic_scoring=payload.use_semantic_scoring,
        )
 
        if comparison["overall_similarity"] >= payload.min_similarity:
