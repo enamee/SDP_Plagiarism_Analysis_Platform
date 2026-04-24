@@ -410,6 +410,7 @@ function CorpusCheckPage() {
                               overallPercentage: item.overall_percentage,
                               similarityLabel: item.similarity_label,
                               topMatches: item.top_matches,
+                              useSemanticScoring,
                             },
                           }}
                           className="text-sm text-blue-700 hover:underline"

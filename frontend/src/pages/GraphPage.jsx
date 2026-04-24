@@ -117,6 +117,7 @@ function GraphPage() {
       overallPercentage: edge.percentage,
       similarityLabel: edge.similarity_label,
       topMatches: edge.top_matches,
+      useSemanticScoring,
     },
   })
 

@@ -229,7 +229,11 @@ function ComparisonDetailsPage() {
 
     try {
       setDownloadingReport(true)
-      await downloadComparisonReport(details.documentAId, details.documentBId)
+      await downloadComparisonReport(
+        details.documentAId,
+        details.documentBId,
+        details.useSemanticScoring
+      )
     } catch (err) {
       setError(err.message)
     } finally {

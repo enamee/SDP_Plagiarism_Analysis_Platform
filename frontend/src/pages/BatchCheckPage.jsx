@@ -249,6 +249,7 @@ function BatchCheckPage() {
                              overallPercentage: pair.overall_percentage,
                              similarityLabel: pair.similarity_label,
                              topMatches: pair.top_matches,
+                             useSemanticScoring,
                            },
                          }}
                          className="text-sm text-blue-700 hover:underline"
@@ -288,6 +289,7 @@ function BatchCheckPage() {
                              overallPercentage: pair.overall_percentage,
                              similarityLabel: pair.similarity_label,
                              topMatches: pair.top_matches,
+                             useSemanticScoring,
                            },
                          }}
                          className="inline-block mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
