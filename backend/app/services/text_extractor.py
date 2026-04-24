@@ -11,6 +11,167 @@ except Exception:  # pragma: no cover - optional dependency at runtime
     pytesseract = None
 
 
+def _is_bullet_line(text: str) -> bool:
+    return bool(re.match(r"^(?:[-*•]|\d+[.)]|[A-Za-z]\))\s+", text.strip()))
+
+
+def _is_heading_line(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped or len(stripped) > 90:
+        return False
+
+    if re.match(r"^\d+(?:\.\d+)*\s+\S+", stripped):
+        return True
+
+    if stripped.endswith(":") and len(stripped.split()) <= 8:
+        return True
+
+    words = stripped.split()
+    if len(words) <= 6 and (stripped.isupper() or stripped == stripped.title()):
+        return True
+
+    return False
+
+
+def _is_code_like_line(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped:
+        return False
+
+    symbol_count = sum(stripped.count(char) for char in "{}[]();=<>/*\\|:")
+    symbol_ratio = symbol_count / max(len(stripped), 1)
+
+    if symbol_count >= 3 and symbol_ratio >= 0.08:
+        return True
+
+    if re.search(r"\b(?:def|class|return|if|else|for|while|function|import|from|public|private|void|int|float|double|print|printf|console\.log)\b", stripped):
+        return True
+
+    return False
+
+
+def _is_structured_line(text: str) -> bool:
+    return _is_bullet_line(text) or _is_heading_line(text) or _is_code_like_line(text)
+
+
+def _group_pdf_words_into_lines(words: list[dict], y_tolerance: float = 2.5) -> list[dict]:
+    grouped_lines: list[dict] = []
+
+    for word in sorted(words, key=lambda item: (item.get("top", 0.0), item.get("x0", 0.0))):
+        word_text = (word.get("text") or "").strip()
+        if not word_text:
+            continue
+
+        top = float(word.get("top", 0.0))
+        bottom = float(word.get("bottom", top))
+
+        if not grouped_lines or abs(top - grouped_lines[-1]["top"]) > y_tolerance:
+            grouped_lines.append(
+                {
+                    "words": [word],
+                    "top": top,
+                    "bottom": bottom,
+                }
+            )
+            continue
+
+        grouped_lines[-1]["words"].append(word)
+        grouped_lines[-1]["top"] = min(grouped_lines[-1]["top"], top)
+        grouped_lines[-1]["bottom"] = max(grouped_lines[-1]["bottom"], bottom)
+
+    return grouped_lines
+
+
+def _build_pdf_line_text(line_words: list[dict]) -> str:
+    ordered_words = sorted(line_words, key=lambda item: (item.get("x0", 0.0), item.get("top", 0.0)))
+    parts = []
+
+    for word in ordered_words:
+        word_text = (word.get("text") or "").strip()
+        if word_text:
+            parts.append(word_text)
+
+    line_text = " ".join(parts)
+    line_text = re.sub(r"\s+([,.;:!?।॥)\]\}])", r"\1", line_text)
+    line_text = re.sub(r"([([{])\s+", r"\1", line_text)
+    return line_text.strip()
+
+
+def _should_join_pdf_lines(previous_line: str, current_line: str, vertical_gap: float) -> bool:
+    previous_line = previous_line.strip()
+    current_line = current_line.strip()
+
+    if not previous_line or not current_line:
+        return False
+
+    if _is_structured_line(previous_line) or _is_structured_line(current_line):
+        return False
+
+    if vertical_gap > 6.0:
+        return False
+
+    if re.search(r"[.!?।॥:;]$", previous_line):
+        return False
+
+    if previous_line.endswith("-") and re.match(r"^[A-Za-z\u0980-\u09ff]", current_line):
+        return True
+
+    first_char = current_line[0]
+    if first_char.islower() or first_char.isdigit() or first_char in "([{'\"“‘":
+        return True
+
+    return False
+
+
+def _extract_layout_text_from_pdf_page(page) -> str:
+    try:
+        words = page.extract_words(keep_blank_chars=False, use_text_flow=True)
+    except TypeError:
+        words = page.extract_words()
+    except Exception:
+        words = []
+
+    if not words:
+        return page.extract_text() or ""
+
+    line_groups = _group_pdf_words_into_lines(words)
+    if not line_groups:
+        return page.extract_text() or ""
+
+    rebuilt_lines: list[dict] = []
+
+    for line_group in line_groups:
+        line_text = _build_pdf_line_text(line_group["words"])
+        if not line_text:
+            continue
+
+        line_entry = {
+            "text": line_text,
+            "top": line_group["top"],
+            "bottom": line_group["bottom"],
+        }
+
+        if not rebuilt_lines:
+            rebuilt_lines.append(line_entry)
+            continue
+
+        previous_line = rebuilt_lines[-1]
+        vertical_gap = line_entry["top"] - previous_line["bottom"]
+
+        if _should_join_pdf_lines(previous_line["text"], line_entry["text"], vertical_gap):
+            if previous_line["text"].endswith("-"):
+                previous_line["text"] = f"{previous_line['text'][:-1]}{line_entry['text'].lstrip()}"
+            else:
+                previous_line["text"] = f"{previous_line['text']} {line_entry['text']}"
+
+            previous_line["bottom"] = max(previous_line["bottom"], line_entry["bottom"])
+            continue
+
+        rebuilt_lines.append(line_entry)
+
+    return "\n".join(line["text"] for line in rebuilt_lines)
+
+
 def clean_text(text: str) -> str:
     if not text:
         return ""
@@ -133,7 +294,7 @@ def extract_text_from_pdf(file_path: Path) -> str:
 
     with pdfplumber.open(file_path) as pdf:
         for page in pdf.pages:
-            page_text = page.extract_text() or ""
+            page_text = _extract_layout_text_from_pdf_page(page)
             if page_text.strip():
                 extracted_pages.append(page_text)
 
