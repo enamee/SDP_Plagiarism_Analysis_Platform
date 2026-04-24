@@ -85,6 +85,7 @@ def generate_similarity_graph(payload: GraphRequest, db: Session = Depends(get_d
             sentence_threshold=payload.sentence_match_threshold,
             max_sentences_per_document=None,
             use_semantic_scoring=payload.use_semantic_scoring,
+            include_sentence_matches=False,
         )
         similarity = comparison["overall_similarity"]
 
@@ -97,7 +98,7 @@ def generate_similarity_graph(payload: GraphRequest, db: Session = Depends(get_d
                 "similarity": comparison["overall_similarity"],
                 "percentage": comparison["overall_percentage"],
                 "similarity_label": comparison["similarity_label"],
-                "top_matches": comparison["top_matches"],
+                "top_matches": [],
             })
 
     log_event(

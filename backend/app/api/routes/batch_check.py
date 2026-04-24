@@ -77,6 +77,7 @@ def run_batch_check(payload: BatchCheckRequest, db: Session = Depends(get_db)):
            sentence_threshold=payload.sentence_match_threshold,
            max_sentences_per_document=None,
            use_semantic_scoring=payload.use_semantic_scoring,
+           include_sentence_matches=False,
        )
 
        if comparison["overall_similarity"] >= payload.min_similarity:
@@ -88,7 +89,7 @@ def run_batch_check(payload: BatchCheckRequest, db: Session = Depends(get_db)):
                "overall_similarity": comparison["overall_similarity"],
                "overall_percentage": comparison["overall_percentage"],
                "similarity_label": comparison["similarity_label"],
-               "top_matches": comparison["top_matches"],
+               "top_matches": [],
            })
 
    pair_results.sort(

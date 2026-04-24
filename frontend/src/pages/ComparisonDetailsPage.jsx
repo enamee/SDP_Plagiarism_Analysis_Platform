@@ -3,6 +3,7 @@ import StatusBadge from '../components/StatusBadge'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
+  compareDocuments,
   downloadComparisonReport,
   getDocumentById,
 } from '../services/documentService'
@@ -135,13 +136,18 @@ function ComparisonDetailsPage() {
   const navigate = useNavigate()
 
   const details = location.state?.comparisonDetails || null
+  const initialTopMatches = details?.topMatches || []
 
   const [loadingDocuments, setLoadingDocuments] = useState(Boolean(details))
+  const [loadingSentenceMatches, setLoadingSentenceMatches] = useState(
+    Boolean(details && initialTopMatches.length === 0)
+  )
   const [error, setError] = useState('')
   const [documentADetail, setDocumentADetail] = useState(null)
   const [documentBDetail, setDocumentBDetail] = useState(null)
   const [downloadingReport, setDownloadingReport] = useState(false)
   const [activeSentenceSelection, setActiveSentenceSelection] = useState(null)
+  const [topMatches, setTopMatches] = useState(initialTopMatches)
 
   useEffect(() => {
     async function loadDocuments() {
@@ -158,35 +164,45 @@ function ComparisonDetailsPage() {
           getDocumentById(details.documentBId),
         ])
 
+        if (initialTopMatches.length === 0) {
+          setLoadingSentenceMatches(true)
+          const comparison = await compareDocuments(
+            details.documentAId,
+            details.documentBId,
+            details.useSemanticScoring,
+            details.sentenceMatchThreshold
+          )
+          setTopMatches(comparison.top_matches || [])
+        } else {
+          setTopMatches(initialTopMatches)
+        }
+
         setDocumentADetail(docA)
         setDocumentBDetail(docB)
       } catch (err) {
         setError(err.message)
       } finally {
         setLoadingDocuments(false)
+        setLoadingSentenceMatches(false)
       }
     }
 
     loadDocuments()
-  }, [details])
+  }, [details, initialTopMatches])
 
-  const matchedSentencesA = details
-    ? details.topMatches.map((match) => match.sentence_a)
-    : []
+  const matchedSentencesA = topMatches.map((match) => match.sentence_a)
 
-  const matchedSentencesB = details
-    ? details.topMatches.map((match) => match.sentence_b)
-    : []
+  const matchedSentencesB = topMatches.map((match) => match.sentence_b)
 
   const sentenceLinks = useMemo(() => {
     const aToB = new Map()
     const bToA = new Map()
 
-    if (!details) {
+    if (!details || topMatches.length === 0) {
       return { aToB, bToA }
     }
 
-    details.topMatches.forEach((match) => {
+    topMatches.forEach((match) => {
       const sentenceAKey = normalizeSentence(match.sentence_a)
       const sentenceBKey = normalizeSentence(match.sentence_b)
 
@@ -207,7 +223,7 @@ function ComparisonDetailsPage() {
     })
 
     return { aToB, bToA }
-  }, [details])
+  }, [details, topMatches])
 
   const linkedSentencesA = useMemo(() => {
     if (!activeSentenceSelection || activeSentenceSelection.side !== 'b') {
@@ -359,20 +375,22 @@ function ComparisonDetailsPage() {
       <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
         <h3 className="text-xl font-semibold mb-2">All Matching Sentences</h3>
         <p className="text-sm text-slate-600 mb-1">
-          Total matching sentence pairs found: {details.topMatches.length}
+          Total matching sentence pairs found: {topMatches.length}
         </p>
         <p className="text-xs text-slate-500 mb-4">
           Click any highlighted sentence in either panel below to emphasize its linked matches.
         </p>
 
-        {details.topMatches.length === 0 ? (
+        {loadingSentenceMatches ? (
+          <p className="text-slate-600">Loading sentence-level matches...</p>
+        ) : topMatches.length === 0 ? (
           <EmptyState
             title="No strong sentence matches"
             description="The selected documents do not have strong sentence-level overlap in the current analysis."
           />
         ) : (
           <div className="space-y-4">
-            {details.topMatches.map((match, index) => (
+            {topMatches.map((match, index) => (
               <div
                 key={index}
                 className="rounded-xl border border-slate-200 p-4 bg-slate-50"

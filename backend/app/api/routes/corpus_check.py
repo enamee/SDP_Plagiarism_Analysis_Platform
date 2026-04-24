@@ -107,6 +107,7 @@ def run_corpus_check(
             sentence_threshold=sentence_match_threshold,
             max_sentences_per_document=None,
             use_semantic_scoring=use_semantic_scoring,
+            include_sentence_matches=False,
         )
 
         ranked_results.append({
@@ -119,7 +120,7 @@ def run_corpus_check(
             "overall_similarity": comparison["overall_similarity"],
             "overall_percentage": comparison["overall_percentage"],
             "similarity_label": comparison["similarity_label"],
-            "top_matches": comparison["top_matches"],
+            "top_matches": [],
         })
 
     ranked_results.sort(

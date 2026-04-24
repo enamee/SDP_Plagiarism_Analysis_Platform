@@ -364,6 +364,7 @@ def compare_two_documents(
     sentence_threshold: float | None = None,
     max_sentences_per_document: int | None = 50,
     use_semantic_scoring: bool | None = None,
+    include_sentence_matches: bool = True,
     include_debug: bool = False,
 ) -> dict:
     components = compute_document_similarity_components(
@@ -380,14 +381,17 @@ def compare_two_documents(
             effective_sentence_threshold = 0.40
 
     overall_score = float(components["overall_similarity"])
-    top_matches = find_top_sentence_matches(
-        text_a,
-        text_b,
-        top_k=sentence_top_k,
-        threshold=effective_sentence_threshold,
-        max_sentences_per_document=max_sentences_per_document,
-        use_semantic_scoring=use_semantic_scoring,
-    )
+    top_matches = []
+
+    if include_sentence_matches:
+        top_matches = find_top_sentence_matches(
+            text_a,
+            text_b,
+            top_k=sentence_top_k,
+            threshold=effective_sentence_threshold,
+            max_sentences_per_document=max_sentences_per_document,
+            use_semantic_scoring=use_semantic_scoring,
+        )
 
     result = {
         "overall_similarity": round(overall_score, 4),

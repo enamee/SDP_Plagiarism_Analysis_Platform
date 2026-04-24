@@ -56,6 +56,14 @@ function BatchCheckPage() {
    )
  }
 
+ const handleSelectAll = () => {
+   setSelectedIds(documents.map((doc) => doc.id))
+ }
+
+ const handleUnselectAll = () => {
+   setSelectedIds([])
+ }
+
  const handleRunBatchCheck = async (event) => {
    event.preventDefault()
    setError('')
@@ -109,6 +117,23 @@ function BatchCheckPage() {
              <label className="block text-sm font-medium text-slate-700 mb-3">
                Select Documents
              </label>
+
+             <div className="mb-3 flex flex-wrap gap-2">
+               <button
+                 type="button"
+                 onClick={handleSelectAll}
+                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-50"
+               >
+                 Select All
+               </button>
+               <button
+                 type="button"
+                 onClick={handleUnselectAll}
+                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-50"
+               >
+                 Unselect All
+               </button>
+             </div>
 
              {documents.length === 0 ? (
                <EmptyState
@@ -275,7 +300,7 @@ function BatchCheckPage() {
                              overallSimilarity: pair.overall_similarity,
                              overallPercentage: pair.overall_percentage,
                              similarityLabel: pair.similarity_label,
-                             topMatches: pair.top_matches,
+                             topMatches: pair.top_matches || [],
                              useSemanticScoring,
                              sentenceMatchThreshold,
                            },
@@ -316,7 +341,7 @@ function BatchCheckPage() {
                              overallSimilarity: pair.overall_similarity,
                              overallPercentage: pair.overall_percentage,
                              similarityLabel: pair.similarity_label,
-                             topMatches: pair.top_matches,
+                             topMatches: pair.top_matches || [],
                              useSemanticScoring,
                              sentenceMatchThreshold,
                            },

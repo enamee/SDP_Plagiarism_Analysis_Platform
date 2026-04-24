@@ -75,6 +75,14 @@ function GraphPage() {
     )
   }
 
+  const handleSelectAll = () => {
+    setSelectedIds(documents.map((doc) => doc.id))
+  }
+
+  const handleUnselectAll = () => {
+    setSelectedIds([])
+  }
+
   const handleGenerateGraph = async (event) => {
     event.preventDefault()
     setError('')
@@ -123,7 +131,7 @@ function GraphPage() {
       overallSimilarity: edge.similarity,
       overallPercentage: edge.percentage,
       similarityLabel: edge.similarity_label,
-      topMatches: edge.top_matches,
+      topMatches: edge.top_matches || [],
       useSemanticScoring,
       sentenceMatchThreshold,
     },
@@ -154,6 +162,23 @@ function GraphPage() {
               <p className="text-sm text-slate-600 mb-3">
                 If you select none, the graph will use all uploaded documents.
               </p>
+
+              <div className="mb-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-50"
+                >
+                  Select All
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUnselectAll}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-50"
+                >
+                  Unselect All
+                </button>
+              </div>
 
               {documents.length === 0 ? (
                 <p className="text-slate-600">No uploaded documents available.</p>

@@ -432,7 +432,7 @@ function CorpusCheckPage() {
                               overallSimilarity: item.overall_similarity,
                               overallPercentage: item.overall_percentage,
                               similarityLabel: item.similarity_label,
-                              topMatches: item.top_matches,
+                              topMatches: item.top_matches || [],
                               useSemanticScoring,
                               sentenceMatchThreshold,
                             },
@@ -482,7 +482,9 @@ function CorpusCheckPage() {
                               overallSimilarity: item.overall_similarity,
                               overallPercentage: item.overall_percentage,
                               similarityLabel: item.similarity_label,
-                              topMatches: item.top_matches,
+                              topMatches: item.top_matches || [],
+                              useSemanticScoring,
+                              sentenceMatchThreshold,
                             },
                           }}
                           className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
