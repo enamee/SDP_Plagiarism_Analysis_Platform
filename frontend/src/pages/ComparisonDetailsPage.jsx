@@ -10,8 +10,10 @@ import {
 function splitTextIntoDisplaySentences(text) {
   if (!text) return []
 
-  return text
-    .split(/(?<=[.!?])\s+/)
+  const normalizedText = text.replace(/\r\n/g, '\n')
+
+  return normalizedText
+    .split(/(?<=[.!?।॥])\s*|\n+/u)
     .map((sentence) => sentence.trim())
     .filter(Boolean)
 }
@@ -19,17 +21,39 @@ function splitTextIntoDisplaySentences(text) {
 function normalizeSentence(sentence) {
   return sentence
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }
 
-function HighlightedTextPanel({ title, text, matchedSentences }) {
+function HighlightedTextPanel({
+  title,
+  text,
+  matchedSentences,
+  linkedSentences,
+  selectedSentence,
+  onSentenceClick,
+}) {
   const sentenceList = useMemo(() => splitTextIntoDisplaySentences(text), [text])
 
-  const matchedSet = useMemo(() => {
-    return new Set(matchedSentences.map((sentence) => normalizeSentence(sentence)))
+  const normalizedMatches = useMemo(() => {
+    return matchedSentences
+      .map((sentence) => normalizeSentence(sentence))
+      .filter(Boolean)
   }, [matchedSentences])
+
+  const linkedSet = useMemo(() => new Set(linkedSentences), [linkedSentences])
+
+  const handleKeySelect = (event, sentenceKey, isMatched) => {
+    if (!isMatched) {
+      return
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onSentenceClick(sentenceKey)
+    }
+  }
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -40,16 +64,33 @@ function HighlightedTextPanel({ title, text, matchedSentences }) {
           <p className="text-slate-500">No extracted text available.</p>
         ) : (
           sentenceList.map((sentence, index) => {
-            const isMatched = matchedSet.has(normalizeSentence(sentence))
+            const sentenceKey = normalizeSentence(sentence)
+            const isMatched = Boolean(sentenceKey) && normalizedMatches.some((matchedKey) => (
+              sentenceKey === matchedKey
+              || sentenceKey.includes(matchedKey)
+              || matchedKey.includes(sentenceKey)
+            ))
+            const isSelected = selectedSentence === sentenceKey
+            const isLinked = linkedSet.has(sentenceKey)
+
+            const sentenceClass = [
+              'inline rounded px-1 transition',
+              isMatched ? 'cursor-pointer' : '',
+              isMatched && !isSelected && !isLinked ? 'bg-yellow-200' : '',
+              isLinked ? 'bg-emerald-200 ring-1 ring-emerald-400' : '',
+              isSelected ? 'bg-blue-200 ring-2 ring-blue-500' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')
 
             return (
               <span
                 key={index}
-                className={`inline ${
-                  isMatched
-                    ? 'bg-yellow-200 rounded px-1'
-                    : ''
-                }`}
+                role={isMatched ? 'button' : undefined}
+                tabIndex={isMatched ? 0 : -1}
+                onClick={() => isMatched && onSentenceClick(sentenceKey)}
+                onKeyDown={(event) => handleKeySelect(event, sentenceKey, isMatched)}
+                className={sentenceClass}
               >
                 {sentence}{' '}
               </span>
@@ -72,6 +113,7 @@ function ComparisonDetailsPage() {
   const [documentADetail, setDocumentADetail] = useState(null)
   const [documentBDetail, setDocumentBDetail] = useState(null)
   const [downloadingReport, setDownloadingReport] = useState(false)
+  const [activeSentenceSelection, setActiveSentenceSelection] = useState(null)
 
   useEffect(() => {
     async function loadDocuments() {
@@ -107,6 +149,73 @@ function ComparisonDetailsPage() {
   const matchedSentencesB = details
     ? details.topMatches.map((match) => match.sentence_b)
     : []
+
+  const sentenceLinks = useMemo(() => {
+    const aToB = new Map()
+    const bToA = new Map()
+
+    if (!details) {
+      return { aToB, bToA }
+    }
+
+    details.topMatches.forEach((match) => {
+      const sentenceAKey = normalizeSentence(match.sentence_a)
+      const sentenceBKey = normalizeSentence(match.sentence_b)
+
+      if (!sentenceAKey || !sentenceBKey) {
+        return
+      }
+
+      if (!aToB.has(sentenceAKey)) {
+        aToB.set(sentenceAKey, new Set())
+      }
+
+      if (!bToA.has(sentenceBKey)) {
+        bToA.set(sentenceBKey, new Set())
+      }
+
+      aToB.get(sentenceAKey).add(sentenceBKey)
+      bToA.get(sentenceBKey).add(sentenceAKey)
+    })
+
+    return { aToB, bToA }
+  }, [details])
+
+  const linkedSentencesA = useMemo(() => {
+    if (!activeSentenceSelection || activeSentenceSelection.side !== 'b') {
+      return []
+    }
+
+    return Array.from(
+      sentenceLinks.bToA.get(activeSentenceSelection.sentence) || new Set()
+    )
+  }, [activeSentenceSelection, sentenceLinks])
+
+  const linkedSentencesB = useMemo(() => {
+    if (!activeSentenceSelection || activeSentenceSelection.side !== 'a') {
+      return []
+    }
+
+    return Array.from(
+      sentenceLinks.aToB.get(activeSentenceSelection.sentence) || new Set()
+    )
+  }, [activeSentenceSelection, sentenceLinks])
+
+  const selectedSentenceA =
+    activeSentenceSelection?.side === 'a' ? activeSentenceSelection.sentence : ''
+
+  const selectedSentenceB =
+    activeSentenceSelection?.side === 'b' ? activeSentenceSelection.sentence : ''
+
+  const handleSentenceSelect = (side, sentenceKey) => {
+    setActiveSentenceSelection((previous) => {
+      if (previous?.side === side && previous?.sentence === sentenceKey) {
+        return null
+      }
+
+      return { side, sentence: sentenceKey }
+    })
+  }
 
   const handleDownloadReport = async () => {
     if (!details) {
@@ -216,8 +325,11 @@ function ComparisonDetailsPage() {
 
       <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
         <h3 className="text-xl font-semibold mb-2">All Matching Sentences</h3>
-        <p className="text-sm text-slate-600 mb-4">
+        <p className="text-sm text-slate-600 mb-1">
           Total matching sentence pairs found: {details.topMatches.length}
+        </p>
+        <p className="text-xs text-slate-500 mb-4">
+          Click any highlighted sentence in either panel below to emphasize its linked matches.
         </p>
 
         {details.topMatches.length === 0 ? (
@@ -269,12 +381,18 @@ function ComparisonDetailsPage() {
           title={`Highlighted Text - ${details.documentATitle}`}
           text={loadingDocuments ? '' : documentADetail?.extracted_text || ''}
           matchedSentences={matchedSentencesA}
+          linkedSentences={linkedSentencesA}
+          selectedSentence={selectedSentenceA}
+          onSentenceClick={(sentenceKey) => handleSentenceSelect('a', sentenceKey)}
         />
 
         <HighlightedTextPanel
           title={`Highlighted Text - ${details.documentBTitle}`}
           text={loadingDocuments ? '' : documentBDetail?.extracted_text || ''}
           matchedSentences={matchedSentencesB}
+          linkedSentences={linkedSentencesB}
+          selectedSentence={selectedSentenceB}
+          onSentenceClick={(sentenceKey) => handleSentenceSelect('b', sentenceKey)}
         />
       </div>
     </div>

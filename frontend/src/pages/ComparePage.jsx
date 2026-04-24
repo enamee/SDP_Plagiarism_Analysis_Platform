@@ -12,8 +12,10 @@ import {
 function splitTextIntoDisplaySentences(text) {
  if (!text) return []
 
- return text
-   .split(/(?<=[.!?])\s+/)
+ const normalizedText = text.replace(/\r\n/g, '\n')
+
+ return normalizedText
+   .split(/(?<=[.!?।॥])\s*|\n+/u)
    .map((sentence) => sentence.trim())
    .filter(Boolean)
 }
@@ -36,8 +38,10 @@ function HighlightedTextPanel({
 }) {
  const sentenceList = useMemo(() => splitTextIntoDisplaySentences(text), [text])
 
- const matchedSet = useMemo(() => {
-   return new Set(matchedSentences.map((sentence) => normalizeSentence(sentence)))
+ const normalizedMatches = useMemo(() => {
+   return matchedSentences
+     .map((sentence) => normalizeSentence(sentence))
+     .filter(Boolean)
  }, [matchedSentences])
 
  const linkedSet = useMemo(() => new Set(linkedSentences), [linkedSentences])
@@ -63,7 +67,11 @@ function HighlightedTextPanel({
        ) : (
          sentenceList.map((sentence, index) => {
            const sentenceKey = normalizeSentence(sentence)
-           const isMatched = matchedSet.has(sentenceKey)
+           const isMatched = Boolean(sentenceKey) && normalizedMatches.some((matchedKey) => (
+             sentenceKey === matchedKey
+             || sentenceKey.includes(matchedKey)
+             || matchedKey.includes(sentenceKey)
+           ))
            const isSelected = selectedSentence === sentenceKey
            const isLinked = linkedSet.has(sentenceKey)
 
