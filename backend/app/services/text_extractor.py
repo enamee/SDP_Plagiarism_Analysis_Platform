@@ -6,6 +6,11 @@ import pypdfium2 as pdfium
 from docx import Document
 
 try:
+    import fitz  # PyMuPDF
+except Exception:  # pragma: no cover - optional dependency at runtime
+    fitz = None
+
+try:
     import pytesseract
 except Exception:  # pragma: no cover - optional dependency at runtime
     pytesseract = None
@@ -188,7 +193,7 @@ def clean_text(text: str) -> str:
         r"\1 ",
         text,
     )
-    text = re.sub(r"\s{2,}", " ", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
 
     return text.strip()
 
@@ -301,6 +306,69 @@ def extract_text_from_pdf(file_path: Path) -> str:
     return clean_text("\n\n".join(extracted_pages))
 
 
+def _extract_layout_text_from_pdf_page_pymupdf(page) -> str:
+    words = page.get_text("words", sort=True) or []
+    if not words:
+        return page.get_text("text", sort=True) or ""
+
+    lines_map: dict[tuple[int, int], list[tuple]] = {}
+    ordered_keys: list[tuple[int, int]] = []
+
+    for word in words:
+        block_no = int(word[5])
+        line_no = int(word[6])
+        key = (block_no, line_no)
+
+        if key not in lines_map:
+            lines_map[key] = []
+            ordered_keys.append(key)
+
+        lines_map[key].append(word)
+
+    line_texts = []
+    for key in ordered_keys:
+        line_words = sorted(lines_map[key], key=lambda item: float(item[0]))
+        tokens = []
+        for line_word in line_words:
+            token = str(line_word[4]).strip()
+            if token:
+                tokens.append(token)
+
+        if not tokens:
+            continue
+
+        line_text = " ".join(tokens)
+        line_text = re.sub(r"\s+([,.;:!?।॥)\]\}])", r"\1", line_text)
+        line_text = re.sub(r"([([{])\s+", r"\1", line_text)
+        line_texts.append(line_text.strip())
+
+    return "\n".join(line_text for line_text in line_texts if line_text)
+
+
+def extract_text_from_pdf_pymupdf(file_path: Path) -> str:
+    if fitz is None:
+        return ""
+
+    extracted_pages = []
+
+    try:
+        document = fitz.open(str(file_path))
+    except Exception:
+        return ""
+
+    try:
+        for page in document:
+            page_text = _extract_layout_text_from_pdf_page_pymupdf(page)
+            if page_text.strip():
+                extracted_pages.append(page_text)
+    except Exception:
+        return ""
+    finally:
+        document.close()
+
+    return clean_text("\n\n".join(extracted_pages))
+
+
 def extract_text_from_pdf_with_ocr(
     file_path: Path,
     tesseract_lang: str = "eng+ben",
@@ -347,18 +415,30 @@ def extract_text_from_file(file_path: Path, extension: str) -> tuple[str, str | 
         return text, warning
 
     if extension == ".pdf":
-        text = extract_text_from_pdf(file_path)
-        if text:
-            if _looks_like_spacing_artifact(text):
+        pymupdf_text = extract_text_from_pdf_pymupdf(file_path)
+        pdfplumber_text = extract_text_from_pdf(file_path)
+
+        selected_text = ""
+        if pymupdf_text and pdfplumber_text:
+            pymupdf_score = _text_quality_score(pymupdf_text)
+            pdfplumber_score = _text_quality_score(pdfplumber_text)
+            selected_text = pymupdf_text if pymupdf_score >= (pdfplumber_score - 0.03) else pdfplumber_text
+        elif pymupdf_text:
+            selected_text = pymupdf_text
+        else:
+            selected_text = pdfplumber_text
+
+        if selected_text:
+            if _looks_like_spacing_artifact(selected_text):
                 ocr_text, _ = extract_text_from_pdf_with_ocr(file_path)
                 if ocr_text:
-                    native_score = _text_quality_score(text)
+                    native_score = _text_quality_score(selected_text)
                     ocr_score = _text_quality_score(ocr_text)
 
-                    if ocr_score >= native_score + 0.1:
+                    if ocr_score >= native_score + 0.08:
                         return ocr_text, "Text extracted using OCR enhancement (better spacing/layout)."
 
-            return text, None
+            return selected_text, None
 
         ocr_text, ocr_warning = extract_text_from_pdf_with_ocr(file_path)
         if ocr_text:
