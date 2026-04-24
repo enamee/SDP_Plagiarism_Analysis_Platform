@@ -17,6 +17,12 @@ SEMANTIC_MODEL_NAME = os.getenv(
     "SEMANTIC_MODEL_NAME",
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
 )
+SEMANTIC_SENTENCE_CANDIDATE_LIMIT = int(
+    os.getenv("SEMANTIC_SENTENCE_CANDIDATE_LIMIT", "250")
+)
+SEMANTIC_SENTENCE_WEIGHT = float(os.getenv("SEMANTIC_SENTENCE_WEIGHT", "0.5"))
+WORD_SENTENCE_WEIGHT = float(os.getenv("WORD_SENTENCE_WEIGHT", "0.35"))
+CHAR_SENTENCE_WEIGHT = float(os.getenv("CHAR_SENTENCE_WEIGHT", "0.15"))
 
 _semantic_model = None
 _semantic_model_load_attempted = False
@@ -115,6 +121,57 @@ def _build_similarity_matrix(
     return cosine_similarity(a_matrix, b_matrix)
 
 
+def _compute_semantic_scores_for_sentence_candidates(
+    sentences_a: list[str],
+    sentences_b: list[str],
+    candidate_pairs: list[tuple[int, int]],
+) -> dict[tuple[int, int], float]:
+    model = _get_semantic_model()
+    if model is None:
+        return {}
+
+    if not candidate_pairs:
+        return {}
+
+    indices_a = sorted({index_a for index_a, _ in candidate_pairs})
+    indices_b = sorted({index_b for _, index_b in candidate_pairs})
+
+    texts_a = [sentences_a[index] for index in indices_a]
+    texts_b = [sentences_b[index] for index in indices_b]
+
+    try:
+        embeddings_a = model.encode(texts_a, normalize_embeddings=True)
+        embeddings_b = model.encode(texts_b, normalize_embeddings=True)
+    except Exception:
+        return {}
+
+    embeddings_by_a = {
+        sentence_index: embeddings_a[position]
+        for position, sentence_index in enumerate(indices_a)
+    }
+    embeddings_by_b = {
+        sentence_index: embeddings_b[position]
+        for position, sentence_index in enumerate(indices_b)
+    }
+
+    scores = {}
+    for index_a, index_b in candidate_pairs:
+        similarity = float(np.dot(embeddings_by_a[index_a], embeddings_by_b[index_b]))
+        scores[(index_a, index_b)] = max(0.0, min(similarity, 1.0))
+
+    return scores
+
+
+def _use_semantic_sentence_matching(use_semantic_scoring: bool | None) -> bool:
+    if use_semantic_scoring is False:
+        return False
+
+    if not SEMANTIC_SCORING_ENABLED and use_semantic_scoring is None:
+        return False
+
+    return _get_semantic_model() is not None
+
+
 def classify_similarity(score: float) -> str:
     if score >= 0.75:
         return "High Similarity"
@@ -207,6 +264,7 @@ def find_top_sentence_matches(
     top_k: int | None = 5,
     threshold: float = 0.2,
     max_sentences_per_document: int | None = 50,
+    use_semantic_scoring: bool | None = None,
 ) -> list[dict]:
     sentences_a = prepare_sentences_for_matching(text_a)
     sentences_b = prepare_sentences_for_matching(text_b)
@@ -235,17 +293,43 @@ def find_top_sentence_matches(
     candidates = []
     for i, sentence_a in enumerate(sentences_a):
         for j, sentence_b in enumerate(sentences_b):
-            score = float((0.7 * word_similarity_matrix[i][j]) + (0.3 * char_similarity_matrix[i][j]))
-            if score >= threshold:
+            lexical_score = float((0.7 * word_similarity_matrix[i][j]) + (0.3 * char_similarity_matrix[i][j]))
+            if lexical_score >= threshold:
                 candidates.append({
                     "index_a": i,
                     "index_b": j,
                     "sentence_a": sentence_a,
                     "sentence_b": sentence_b,
-                    "similarity": score,
+                    "similarity": lexical_score,
+                    "word_similarity": float(word_similarity_matrix[i][j]),
+                    "char_similarity": float(char_similarity_matrix[i][j]),
                 })
 
     candidates.sort(key=lambda item: item["similarity"], reverse=True)
+
+    if candidates and _use_semantic_sentence_matching(use_semantic_scoring):
+        rerank_limit = min(len(candidates), SEMANTIC_SENTENCE_CANDIDATE_LIMIT)
+        top_candidates = candidates[:rerank_limit]
+        top_pairs = [(item["index_a"], item["index_b"]) for item in top_candidates]
+        semantic_scores = _compute_semantic_scores_for_sentence_candidates(
+            sentences_a,
+            sentences_b,
+            top_pairs,
+        )
+
+        if semantic_scores:
+            for item in top_candidates:
+                semantic_score = semantic_scores.get((item["index_a"], item["index_b"]))
+                if semantic_score is None:
+                    continue
+
+                item["similarity"] = float(
+                    (SEMANTIC_SENTENCE_WEIGHT * semantic_score)
+                    + (WORD_SENTENCE_WEIGHT * item["word_similarity"])
+                    + (CHAR_SENTENCE_WEIGHT * item["char_similarity"])
+                )
+
+            candidates.sort(key=lambda item: item["similarity"], reverse=True)
 
     selected = []
     used_a = set()
@@ -253,6 +337,9 @@ def find_top_sentence_matches(
 
     for item in candidates:
         if item["index_a"] in used_a or item["index_b"] in used_b:
+            continue
+
+        if item["similarity"] < threshold:
             continue
 
         selected.append({
@@ -291,6 +378,7 @@ def compare_two_documents(
         top_k=sentence_top_k,
         threshold=sentence_threshold,
         max_sentences_per_document=max_sentences_per_document,
+        use_semantic_scoring=use_semantic_scoring,
     )
 
     result = {
