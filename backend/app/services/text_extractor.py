@@ -11,12 +11,59 @@ except Exception:  # pragma: no cover - optional dependency at runtime
     pytesseract = None
 
 
+def _looks_like_structured_line_start(line: str) -> bool:
+    return bool(re.match(r"^(?:[-*•]|\d+[.)]|[A-Za-z]\)|\([a-zA-Z0-9]+\))\s+", line))
+
+
+def _is_hard_line_break(previous_line: str, next_line: str) -> bool:
+    if _looks_like_structured_line_start(next_line):
+        return True
+
+    if re.search(r"[.!?।॥:;)]$", previous_line):
+        return True
+
+    return False
+
+
+def _reflow_soft_line_breaks(text: str) -> str:
+    lines = [line.strip() for line in text.split("\n")]
+    rebuilt: list[str] = []
+
+    for line in lines:
+        if not line:
+            if rebuilt and rebuilt[-1] != "":
+                rebuilt.append("")
+            continue
+
+        if not rebuilt or rebuilt[-1] == "":
+            rebuilt.append(line)
+            continue
+
+        previous_line = rebuilt[-1]
+
+        # Heal hyphenated line wraps: exam-
+        # ple -> example
+        if re.search(r"[A-Za-z\u0980-\u09ff]-$", previous_line) and re.match(r"^[A-Za-z\u0980-\u09ff]", line):
+            rebuilt[-1] = f"{previous_line[:-1]}{line}"
+            continue
+
+        if _is_hard_line_break(previous_line, line):
+            rebuilt.append(line)
+            continue
+
+        rebuilt[-1] = f"{previous_line} {line}"
+
+    return "\n".join(rebuilt)
+
+
 def clean_text(text: str) -> str:
     if not text:
         return ""
 
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = text.strip()
+
+    text = _reflow_soft_line_breaks(text)
 
     lines = [line.strip() for line in text.split("\n")]
     text = "\n".join(lines)
@@ -27,7 +74,7 @@ def clean_text(text: str) -> str:
         r"\1 ",
         text,
     )
-    text = re.sub(r"\s{2,}", " ", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
 
     return text.strip()
 
