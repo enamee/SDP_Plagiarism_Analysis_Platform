@@ -256,7 +256,8 @@ function ComparisonDetailsPage() {
       await downloadComparisonReport(
         details.documentAId,
         details.documentBId,
-        details.useSemanticScoring
+        details.useSemanticScoring,
+        details.sentenceMatchThreshold
       )
     } catch (err) {
       setError(err.message)

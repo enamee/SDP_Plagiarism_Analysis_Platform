@@ -8,6 +8,7 @@ class BatchCheckRequest(BaseModel):
    min_similarity: float = 0.2
    max_pairs: int = 20
    use_semantic_scoring: bool | None = None
+   sentence_match_threshold: float | None = None
 
 
 class BatchPairResult(BaseModel):

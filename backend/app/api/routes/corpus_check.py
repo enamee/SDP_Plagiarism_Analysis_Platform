@@ -19,6 +19,7 @@ def run_corpus_check(
     same_scope_first: bool = True,
     scope_only: bool = False,
     use_semantic_scoring: bool | None = None,
+    sentence_match_threshold: float | None = None,
     db: Session = Depends(get_db),
 ):
     if result_top_k < 1:
@@ -26,6 +27,13 @@ def run_corpus_check(
 
     if shortlist_top_k < 1:
         raise HTTPException(status_code=400, detail="shortlist_top_k must be at least 1.")
+
+    if sentence_match_threshold is not None:
+        if sentence_match_threshold < 0 or sentence_match_threshold > 1:
+            raise HTTPException(
+                status_code=400,
+                detail="sentence_match_threshold must be between 0 and 1.",
+            )
 
     source_document = db.get(DocumentRecord, document_id)
 
@@ -96,6 +104,7 @@ def run_corpus_check(
             source_document.extracted_text,
             candidate.extracted_text,
             sentence_top_k=None,
+            sentence_threshold=sentence_match_threshold,
             max_sentences_per_document=None,
             use_semantic_scoring=use_semantic_scoring,
         )

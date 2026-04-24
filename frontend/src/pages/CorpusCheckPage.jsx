@@ -18,6 +18,7 @@ function CorpusCheckPage() {
   const [sameScopeFirst, setSameScopeFirst] = useState(cachedState.sameScopeFirst ?? true)
   const [scopeOnly, setScopeOnly] = useState(cachedState.scopeOnly ?? false)
   const [useSemanticScoring, setUseSemanticScoring] = useState(cachedState.useSemanticScoring ?? true)
+  const [sentenceMatchThreshold, setSentenceMatchThreshold] = useState(cachedState.sentenceMatchThreshold ?? 0.4)
 
   const [loadingDocuments, setLoadingDocuments] = useState(true)
   const [runningShortlist, setRunningShortlist] = useState(false)
@@ -51,6 +52,7 @@ function CorpusCheckPage() {
       sameScopeFirst,
       scopeOnly,
       useSemanticScoring,
+      sentenceMatchThreshold,
       shortlistResult,
       result,
     })
@@ -60,6 +62,7 @@ function CorpusCheckPage() {
     sameScopeFirst,
     scopeOnly,
     useSemanticScoring,
+    sentenceMatchThreshold,
     selectedDocumentId,
     shortlistResult,
     shortlistTopK,
@@ -124,7 +127,8 @@ function CorpusCheckPage() {
         shortlistTopK,
         sameScopeFirst,
         scopeOnly,
-        useSemanticScoring
+        useSemanticScoring,
+        sentenceMatchThreshold
       )
       setResult(data)
     } catch (err) {
@@ -218,10 +222,29 @@ function CorpusCheckPage() {
                 <input
                   type="checkbox"
                   checked={useSemanticScoring}
-                  onChange={(e) => setUseSemanticScoring(e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setUseSemanticScoring(checked)
+                    setSentenceMatchThreshold(checked ? 0.4 : 0.3)
+                  }}
                 />
                 Use semantic scoring in detailed comparison
               </label>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Sentence Match Threshold: {(Number(sentenceMatchThreshold) * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={Math.round(Number(sentenceMatchThreshold) * 100)}
+                  onChange={(e) => setSentenceMatchThreshold(Number(e.target.value) / 100)}
+                  className="w-full"
+                />
+              </div>
             </div>
 
             {error && (
@@ -411,6 +434,7 @@ function CorpusCheckPage() {
                               similarityLabel: item.similarity_label,
                               topMatches: item.top_matches,
                               useSemanticScoring,
+                              sentenceMatchThreshold,
                             },
                           }}
                           className="text-sm text-blue-700 hover:underline"

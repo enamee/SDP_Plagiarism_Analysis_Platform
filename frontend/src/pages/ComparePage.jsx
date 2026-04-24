@@ -145,6 +145,7 @@ function ComparePage() {
  const [documentADetail, setDocumentADetail] = useState(null)
  const [documentBDetail, setDocumentBDetail] = useState(null)
  const [useSemanticScoring, setUseSemanticScoring] = useState(true)
+ const [sentenceMatchThreshold, setSentenceMatchThreshold] = useState(0.4)
  const [activeSentenceSelection, setActiveSentenceSelection] = useState(null)
  const [lastAutoComparedQueryKey, setLastAutoComparedQueryKey] = useState('')
 
@@ -193,7 +194,12 @@ function ComparePage() {
      setComparing(true)
 
      const [comparisonResult, docA, docB] = await Promise.all([
-       compareDocuments(selectedDocumentAId, selectedDocumentBId, semanticEnabled),
+         compareDocuments(
+           selectedDocumentAId,
+           selectedDocumentBId,
+           semanticEnabled,
+           sentenceMatchThreshold
+         ),
        getDocumentById(selectedDocumentAId),
        getDocumentById(selectedDocumentBId),
      ])
@@ -259,7 +265,12 @@ function ComparePage() {
 
    try {
      setDownloadingReport(true)
-     await downloadComparisonReport(documentAId, documentBId, useSemanticScoring)
+    await downloadComparisonReport(
+      documentAId,
+      documentBId,
+      useSemanticScoring,
+      sentenceMatchThreshold
+    )
    } catch (err) {
      setError(err.message)
    } finally {
@@ -396,11 +407,30 @@ function ComparePage() {
              <input
                type="checkbox"
                checked={useSemanticScoring}
-               onChange={(event) => setUseSemanticScoring(event.target.checked)}
+               onChange={(event) => {
+                 const checked = event.target.checked
+                 setUseSemanticScoring(checked)
+                 setSentenceMatchThreshold(checked ? 0.4 : 0.3)
+               }}
                className="h-4 w-4 rounded border-slate-300"
              />
              Use semantic scoring (recommended for cross-language/paraphrased overlap)
            </label>
+
+           <div>
+             <label className="block text-sm font-medium text-slate-700 mb-2">
+               Sentence Match Threshold: {(Number(sentenceMatchThreshold) * 100).toFixed(0)}%
+             </label>
+             <input
+               type="range"
+               min="0"
+               max="100"
+               step="1"
+               value={Math.round(Number(sentenceMatchThreshold) * 100)}
+               onChange={(event) => setSentenceMatchThreshold(Number(event.target.value) / 100)}
+               className="w-full"
+             />
+           </div>
 
            {error && (
              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">

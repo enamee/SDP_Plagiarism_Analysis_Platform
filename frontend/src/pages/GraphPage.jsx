@@ -35,6 +35,7 @@ function GraphPage() {
   const [selectedIds, setSelectedIds] = useState(cachedState.selectedIds || [])
   const [minSimilarity, setMinSimilarity] = useState(cachedState.minSimilarity ?? 0.2)
   const [useSemanticScoring, setUseSemanticScoring] = useState(cachedState.useSemanticScoring ?? true)
+  const [sentenceMatchThreshold, setSentenceMatchThreshold] = useState(cachedState.sentenceMatchThreshold ?? 0.4)
   const [loadingDocuments, setLoadingDocuments] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
@@ -61,9 +62,10 @@ function GraphPage() {
       selectedIds,
       minSimilarity,
       useSemanticScoring,
+      sentenceMatchThreshold,
       graphData,
     })
-  }, [graphData, minSimilarity, selectedIds, useSemanticScoring])
+  }, [graphData, minSimilarity, selectedIds, sentenceMatchThreshold, useSemanticScoring])
 
   const handleToggleDocument = (documentId) => {
     setSelectedIds((prev) =>
@@ -85,7 +87,12 @@ function GraphPage() {
 
     try {
       setGenerating(true)
-      const data = await generateGraph(selectedIds, minSimilarity, useSemanticScoring)
+      const data = await generateGraph(
+        selectedIds,
+        minSimilarity,
+        useSemanticScoring,
+        sentenceMatchThreshold
+      )
       setGraphData(data)
     } catch (err) {
       setError(err.message)
@@ -118,6 +125,7 @@ function GraphPage() {
       similarityLabel: edge.similarity_label,
       topMatches: edge.top_matches,
       useSemanticScoring,
+      sentenceMatchThreshold,
     },
   })
 
@@ -200,11 +208,30 @@ function GraphPage() {
               <input
                 type="checkbox"
                 checked={useSemanticScoring}
-                onChange={(e) => setUseSemanticScoring(e.target.checked)}
+                onChange={(e) => {
+                  const checked = e.target.checked
+                  setUseSemanticScoring(checked)
+                  setSentenceMatchThreshold(checked ? 0.4 : 0.3)
+                }}
                 className="h-4 w-4 rounded border-slate-300"
               />
               Use semantic scoring for graph edges
             </label>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Sentence Match Threshold: {(Number(sentenceMatchThreshold) * 100).toFixed(0)}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={Math.round(Number(sentenceMatchThreshold) * 100)}
+                onChange={(e) => setSentenceMatchThreshold(Number(e.target.value) / 100)}
+                className="w-full md:w-64"
+              />
+            </div>
 
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">

@@ -5,6 +5,7 @@ class CompareDocumentsRequest(BaseModel):
    document_a_id: int
    document_b_id: int
    use_semantic_scoring: bool | None = None
+   sentence_match_threshold: float | None = None
 
 
 class SentenceMatch(BaseModel):

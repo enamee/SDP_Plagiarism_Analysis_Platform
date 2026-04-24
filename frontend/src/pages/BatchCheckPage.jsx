@@ -15,6 +15,7 @@ function BatchCheckPage() {
  const [minSimilarity, setMinSimilarity] = useState(cachedState.minSimilarity ?? 0.2)
  const [maxPairs, setMaxPairs] = useState(cachedState.maxPairs ?? 20)
  const [useSemanticScoring, setUseSemanticScoring] = useState(cachedState.useSemanticScoring ?? true)
+ const [sentenceMatchThreshold, setSentenceMatchThreshold] = useState(cachedState.sentenceMatchThreshold ?? 0.4)
  const [loadingDocuments, setLoadingDocuments] = useState(true)
  const [runningCheck, setRunningCheck] = useState(false)
  const [error, setError] = useState('')
@@ -42,9 +43,10 @@ function BatchCheckPage() {
      minSimilarity,
      maxPairs,
      useSemanticScoring,
+     sentenceMatchThreshold,
      result,
    })
- }, [maxPairs, minSimilarity, result, selectedIds, useSemanticScoring])
+ }, [maxPairs, minSimilarity, result, selectedIds, sentenceMatchThreshold, useSemanticScoring])
 
  const handleToggleDocument = (documentId) => {
    setSelectedIds((prev) =>
@@ -76,7 +78,13 @@ function BatchCheckPage() {
 
    try {
      setRunningCheck(true)
-     const data = await runBatchCheck(selectedIds, minSimilarity, maxPairs, useSemanticScoring)
+     const data = await runBatchCheck(
+       selectedIds,
+       minSimilarity,
+       maxPairs,
+       useSemanticScoring,
+       sentenceMatchThreshold
+     )
      setResult(data)
    } catch (err) {
      setError(err.message)
@@ -175,11 +183,30 @@ function BatchCheckPage() {
              <input
                type="checkbox"
                checked={useSemanticScoring}
-               onChange={(e) => setUseSemanticScoring(e.target.checked)}
+               onChange={(e) => {
+                 const checked = e.target.checked
+                 setUseSemanticScoring(checked)
+                 setSentenceMatchThreshold(checked ? 0.4 : 0.3)
+               }}
                className="h-4 w-4 rounded border-slate-300"
              />
              Use semantic scoring for pair comparison
            </label>
+
+           <div>
+             <label className="block text-sm font-medium text-slate-700 mb-2">
+               Sentence Match Threshold: {(Number(sentenceMatchThreshold) * 100).toFixed(0)}%
+             </label>
+             <input
+               type="range"
+               min="0"
+               max="100"
+               step="1"
+               value={Math.round(Number(sentenceMatchThreshold) * 100)}
+               onChange={(e) => setSentenceMatchThreshold(Number(e.target.value) / 100)}
+               className="w-full"
+             />
+           </div>
 
            {error && (
              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
@@ -250,6 +277,7 @@ function BatchCheckPage() {
                              similarityLabel: pair.similarity_label,
                              topMatches: pair.top_matches,
                              useSemanticScoring,
+                             sentenceMatchThreshold,
                            },
                          }}
                          className="text-sm text-blue-700 hover:underline"
@@ -290,6 +318,7 @@ function BatchCheckPage() {
                              similarityLabel: pair.similarity_label,
                              topMatches: pair.top_matches,
                              useSemanticScoring,
+                             sentenceMatchThreshold,
                            },
                          }}
                          className="inline-block mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
