@@ -361,7 +361,7 @@ def compare_two_documents(
     text_a: str,
     text_b: str,
     sentence_top_k: int | None = 5,
-    sentence_threshold: float = 0.2,
+    sentence_threshold: float | None = None,
     max_sentences_per_document: int | None = 50,
     use_semantic_scoring: bool | None = None,
     include_debug: bool = False,
@@ -371,12 +371,20 @@ def compare_two_documents(
         text_b,
         use_semantic_scoring=use_semantic_scoring,
     )
+
+    effective_sentence_threshold = sentence_threshold
+    if effective_sentence_threshold is None:
+        if use_semantic_scoring is False:
+            effective_sentence_threshold = 0.30
+        else:
+            effective_sentence_threshold = 0.40
+
     overall_score = float(components["overall_similarity"])
     top_matches = find_top_sentence_matches(
         text_a,
         text_b,
         top_k=sentence_top_k,
-        threshold=sentence_threshold,
+        threshold=effective_sentence_threshold,
         max_sentences_per_document=max_sentences_per_document,
         use_semantic_scoring=use_semantic_scoring,
     )

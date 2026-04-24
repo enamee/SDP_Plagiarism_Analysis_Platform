@@ -10,16 +10,39 @@ import {
 function splitTextIntoDisplaySentences(text) {
   if (!text) return []
 
-  const normalizedText = text.replace(/\r\n/g, '\n')
+  let normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
+  if (!normalizedText) return []
 
-  const sentences = normalizedText
-    .split(/(?<=[.!?।॥])\s*|\n+/u)
+  normalizedText = normalizedText.replace(/[\t\f\v]+/g, ' ')
+  normalizedText = normalizedText.replace(/\n{3,}/g, '\n\n')
+  normalizedText = normalizedText.replace(/([.!?।॥]+)(?=[A-Z\u0980-\u09ff])/gu, '$1 ')
+
+  const rawSentences = normalizedText
+    .split(/(?<=[.!?।॥])\s+|\n+/u)
     .map((sentence) => sentence.trim())
     .filter(Boolean)
 
-  // Filter out punctuation-only fragments that don't contain alphanumeric characters
-  // This matches the backend's preprocessing logic
-  return sentences.filter((sentence) => /[a-z0-9\u0980-\u09ff]/iu.test(sentence))
+  const cleanedSentences = []
+
+  for (let index = 0; index < rawSentences.length; index += 1) {
+    let candidate = rawSentences[index]
+
+    if (/^\d+[.)]$/.test(candidate) && index + 1 < rawSentences.length) {
+      const nextCandidate = rawSentences[index + 1].trim()
+      if (nextCandidate) {
+        candidate = `${candidate} ${nextCandidate}`
+        index += 1
+      }
+    }
+
+    if (!/[a-z0-9\u0980-\u09ff]/iu.test(candidate)) {
+      continue
+    }
+
+    cleanedSentences.push(candidate)
+  }
+
+  return cleanedSentences
 }
 
 function normalizeSentence(sentence) {
@@ -40,10 +63,15 @@ function HighlightedTextPanel({
 }) {
   const sentenceList = useMemo(() => splitTextIntoDisplaySentences(text), [text])
 
-  const normalizedMatches = useMemo(() => {
-    return matchedSentences
-      .map((sentence) => normalizeSentence(sentence))
-      .filter(Boolean)
+  const normalizedMatchSet = useMemo(() => {
+    const set = new Set()
+    matchedSentences.forEach((sentence) => {
+      const normalized = normalizeSentence(sentence)
+      if (normalized) {
+        set.add(normalized)
+      }
+    })
+    return set
   }, [matchedSentences])
 
   const linkedSet = useMemo(() => new Set(linkedSentences), [linkedSentences])
@@ -69,11 +97,7 @@ function HighlightedTextPanel({
         ) : (
           sentenceList.map((sentence, index) => {
             const sentenceKey = normalizeSentence(sentence)
-            const isMatched = Boolean(sentenceKey) && normalizedMatches.some((matchedKey) => (
-              sentenceKey === matchedKey
-              || sentenceKey.includes(matchedKey)
-              || matchedKey.includes(sentenceKey)
-            ))
+            const isMatched = Boolean(sentenceKey) && normalizedMatchSet.has(sentenceKey)
             const isSelected = selectedSentence === sentenceKey
             const isLinked = linkedSet.has(sentenceKey)
 
