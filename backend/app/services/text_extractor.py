@@ -22,7 +22,11 @@ def clean_text(text: str) -> str:
     text = "\n".join(lines)
 
     text = re.sub(r"\n{3,}", "\n\n", text)
-    text = re.sub(r"([.!?।॥])(?=[A-Za-z0-9\u0980-\u09ff])", r"\1 ", text)
+    text = re.sub(
+        r"([.!?।॥]+)(?=[A-Z\u0980-\u09ff])",
+        r"\1 ",
+        text,
+    )
     text = re.sub(r"\s{2,}", " ", text)
 
     return text.strip()

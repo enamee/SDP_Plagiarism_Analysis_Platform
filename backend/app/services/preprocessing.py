@@ -35,9 +35,9 @@ def split_into_sentences(text: str) -> list[str]:
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     # Add an explicit boundary when sentence punctuation is immediately
-    # followed by a letter/number without a space.
+    # followed by a likely sentence start, but avoid decimals and section numbers.
     text = re.sub(
-        r"([.!?।॥]+)(?=[A-Za-z0-9\u0980-\u09ff])",
+        r"([.!?।॥]+)(?=[A-Z\u0980-\u09ff])",
         r"\1 ",
         text,
     )
