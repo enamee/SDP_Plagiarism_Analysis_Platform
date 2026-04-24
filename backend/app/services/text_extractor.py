@@ -1,5 +1,4 @@
 from pathlib import Path
-import statistics
 import re
 
 import pdfplumber
@@ -98,99 +97,6 @@ def _build_pdf_line_text(line_words: list[dict]) -> str:
     return line_text.strip()
 
 
-def _group_pdf_chars_into_lines(chars: list[dict], y_tolerance: float = 2.0) -> list[dict]:
-    grouped_lines: list[dict] = []
-
-    for char in sorted(chars, key=lambda item: (float(item.get("doctop", item.get("top", 0.0))), float(item.get("x0", 0.0)))):
-        char_text = (char.get("text") or "").strip()
-        if not char_text:
-            continue
-
-        top = float(char.get("top", 0.0))
-        bottom = float(char.get("bottom", top))
-
-        if not grouped_lines or abs(top - grouped_lines[-1]["top"]) > y_tolerance:
-            grouped_lines.append(
-                {
-                    "chars": [char],
-                    "top": top,
-                    "bottom": bottom,
-                }
-            )
-            continue
-
-        grouped_lines[-1]["chars"].append(char)
-        grouped_lines[-1]["top"] = min(grouped_lines[-1]["top"], top)
-        grouped_lines[-1]["bottom"] = max(grouped_lines[-1]["bottom"], bottom)
-
-    return grouped_lines
-
-
-def _build_pdf_line_text_from_chars(line_chars: list[dict]) -> str:
-    ordered_chars = sorted(
-        line_chars,
-        key=lambda item: (float(item.get("x0", 0.0)), float(item.get("doctop", item.get("top", 0.0)))),
-    )
-
-    char_widths = []
-    for char in ordered_chars:
-        char_text = (char.get("text") or "").strip()
-        if not char_text:
-            continue
-
-        x0 = float(char.get("x0", 0.0))
-        x1 = float(char.get("x1", x0))
-        width = x1 - x0
-        if width > 0:
-            char_widths.append(width)
-
-    median_width = statistics.median(char_widths) if char_widths else 2.0
-    space_threshold = max(0.8, min(4.0, median_width * 0.5))
-
-    parts: list[str] = []
-    previous_char = None
-
-    for char in ordered_chars:
-        char_text = (char.get("text") or "").strip()
-        if not char_text:
-            continue
-
-        if previous_char is not None:
-            previous_x1 = float(previous_char.get("x1", previous_char.get("x0", 0.0)))
-            current_x0 = float(char.get("x0", 0.0))
-            gap = current_x0 - previous_x1
-
-            if gap > space_threshold:
-                if not parts or parts[-1] != " ":
-                    parts.append(" ")
-
-        parts.append(char_text)
-        previous_char = char
-
-    line_text = "".join(parts)
-    line_text = re.sub(r"\s+([,.;:!?।॥)\]\}])", r"\1", line_text)
-    line_text = re.sub(r"([([{])\s+", r"\1", line_text)
-    line_text = re.sub(r"[ \t]{2,}", " ", line_text)
-    return line_text.strip()
-
-
-def _select_best_pdf_candidate(candidates: list[str]) -> str:
-    best_text = ""
-    best_score = float("-inf")
-
-    for text in candidates:
-        candidate = (text or "").strip()
-        if not candidate:
-            continue
-
-        score = _text_quality_score(candidate)
-        if score > best_score:
-            best_score = score
-            best_text = candidate
-
-    return best_text
-
-
 def _should_join_pdf_lines(previous_line: str, current_line: str, vertical_gap: float) -> bool:
     previous_line = previous_line.strip()
     current_line = current_line.strip()
@@ -218,8 +124,6 @@ def _should_join_pdf_lines(previous_line: str, current_line: str, vertical_gap: 
 
 
 def _extract_layout_text_from_pdf_page(page) -> str:
-    native_candidates = []
-
     try:
         words = page.extract_words(keep_blank_chars=False, use_text_flow=True)
     except TypeError:
@@ -227,72 +131,45 @@ def _extract_layout_text_from_pdf_page(page) -> str:
     except Exception:
         words = []
 
-    if words:
-        line_groups = _group_pdf_words_into_lines(words)
-        if line_groups:
-            rebuilt_lines: list[dict] = []
+    if not words:
+        return page.extract_text() or ""
 
-            for line_group in line_groups:
-                line_text = _build_pdf_line_text(line_group["words"])
-                if not line_text:
-                    continue
+    line_groups = _group_pdf_words_into_lines(words)
+    if not line_groups:
+        return page.extract_text() or ""
 
-                line_entry = {
-                    "text": line_text,
-                    "top": line_group["top"],
-                    "bottom": line_group["bottom"],
-                }
+    rebuilt_lines: list[dict] = []
 
-                if not rebuilt_lines:
-                    rebuilt_lines.append(line_entry)
-                    continue
+    for line_group in line_groups:
+        line_text = _build_pdf_line_text(line_group["words"])
+        if not line_text:
+            continue
 
-                previous_line = rebuilt_lines[-1]
-                vertical_gap = line_entry["top"] - previous_line["bottom"]
+        line_entry = {
+            "text": line_text,
+            "top": line_group["top"],
+            "bottom": line_group["bottom"],
+        }
 
-                if _should_join_pdf_lines(previous_line["text"], line_entry["text"], vertical_gap):
-                    if previous_line["text"].endswith("-"):
-                        previous_line["text"] = f"{previous_line['text'][:-1]}{line_entry['text'].lstrip()}"
-                    else:
-                        previous_line["text"] = f"{previous_line['text']} {line_entry['text']}"
+        if not rebuilt_lines:
+            rebuilt_lines.append(line_entry)
+            continue
 
-                    previous_line["bottom"] = max(previous_line["bottom"], line_entry["bottom"])
-                    continue
+        previous_line = rebuilt_lines[-1]
+        vertical_gap = line_entry["top"] - previous_line["bottom"]
 
-                rebuilt_lines.append(line_entry)
+        if _should_join_pdf_lines(previous_line["text"], line_entry["text"], vertical_gap):
+            if previous_line["text"].endswith("-"):
+                previous_line["text"] = f"{previous_line['text'][:-1]}{line_entry['text'].lstrip()}"
+            else:
+                previous_line["text"] = f"{previous_line['text']} {line_entry['text']}"
 
-            if rebuilt_lines:
-                native_candidates.append("\n".join(line["text"] for line in rebuilt_lines))
+            previous_line["bottom"] = max(previous_line["bottom"], line_entry["bottom"])
+            continue
 
-    try:
-        chars = page.chars or []
-    except Exception:
-        chars = []
+        rebuilt_lines.append(line_entry)
 
-    if chars:
-        char_line_groups = _group_pdf_chars_into_lines(chars)
-        if char_line_groups:
-            char_lines = []
-            for line_group in char_line_groups:
-                line_text = _build_pdf_line_text_from_chars(line_group["chars"])
-                if line_text:
-                    char_lines.append(line_text)
-
-            if char_lines:
-                native_candidates.append("\n".join(char_lines))
-
-    try:
-        layout_text = page.extract_text(layout=True) or ""
-        if layout_text.strip():
-            native_candidates.append(layout_text)
-    except Exception:
-        pass
-
-    best_text = _select_best_pdf_candidate(native_candidates)
-    if best_text:
-        return best_text
-
-    return page.extract_text() or ""
+    return "\n".join(line["text"] for line in rebuilt_lines)
 
 
 def clean_text(text: str) -> str:
@@ -302,7 +179,7 @@ def clean_text(text: str) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = text.strip()
 
-    lines = [line.rstrip() for line in text.split("\n")]
+    lines = [line.strip() for line in text.split("\n")]
     text = "\n".join(lines)
 
     text = re.sub(r"\n{3,}", "\n\n", text)
@@ -311,7 +188,7 @@ def clean_text(text: str) -> str:
         r"\1 ",
         text,
     )
-    text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r"\s{2,}", " ", text)
 
     return text.strip()
 
