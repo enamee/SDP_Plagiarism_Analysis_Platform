@@ -24,11 +24,15 @@ This file tracks post-semantic rollout issues and commit-by-commit fixes.
   - Commit: 19ca879
   - Message: fix: show N/A fallback for empty dashboard metadata
 
+- [x] Sentence splitting hardening for style-shift and matching edge cases
+  - Commit: pending (next commit)
+  - Includes: no-space punctuation boundaries, ordered-list marker merge, punctuation-only fragment filtering.
+
+- [x] PDF extraction quality heuristic with OCR enhancement when spacing artifacts are detected
+  - Commit: pending (next commit)
+  - Includes: spacing-artifact detection and OCR text quality comparison before replacement.
+
 ## Pending
 
-- [ ] Improve extraction quality for some LaTeX PDFs where spaces between words are missing.
-- [ ] Improve sentence splitting robustness for style-shift and sentence matching edge cases:
-  - no-space punctuation boundaries from extracted PDFs,
-  - ordered list markers like 1. 2. 3.,
-  - punctuation-only fragments and noisy splits.
-- [ ] Recheck style-shift chunk behavior with chunk_size=5 on problematic PDFs after sentence-splitting improvements.
+- [ ] Recheck style-shift chunk behavior with chunk_size=5 on your problematic PDFs after these preprocessing changes.
+- [ ] If needed, add a second extraction path for difficult LaTeX PDFs (PyMuPDF extraction and scorer-based selection).

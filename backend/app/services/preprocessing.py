@@ -20,7 +20,8 @@ def normalize_text(text: str) -> str:
 
 def split_into_sentences(text: str) -> list[str]:
     """
-    Simple sentence splitting for English and Bangla text.
+    Sentence splitting for English and Bangla text with support for
+    punctuation without trailing spaces and common OCR/PDF artifacts.
     """
     if not text:
         return []
@@ -29,8 +30,47 @@ def split_into_sentences(text: str) -> list[str]:
     if not text:
         return []
 
-    sentences = re.split(r'(?<=[.!?।])\s+', text)
-    return [sentence.strip() for sentence in sentences if sentence.strip()]
+    # Normalize repeated whitespace while preserving paragraph breaks.
+    text = re.sub(r"[\t\f\v]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    # Add an explicit boundary when sentence punctuation is immediately
+    # followed by a letter/number without a space.
+    text = re.sub(
+        r"([.!?।॥]+)(?=[A-Za-z0-9\u0980-\u09ff])",
+        r"\1 ",
+        text,
+    )
+
+    # Split by sentence-ending punctuation or hard line breaks.
+    raw_sentences = re.split(r"(?<=[.!?।॥])\s+|\n+", text)
+
+    cleaned_sentences = []
+    index = 0
+    while index < len(raw_sentences):
+        candidate = raw_sentences[index].strip()
+        if not candidate:
+            index += 1
+            continue
+
+        # Merge ordered-list markers like "1." or "2)" into the next sentence.
+        if re.fullmatch(r"\d+[.)]", candidate):
+            next_index = index + 1
+            if next_index < len(raw_sentences):
+                next_candidate = raw_sentences[next_index].strip()
+                if next_candidate:
+                    candidate = f"{candidate} {next_candidate}"
+                    index = next_index
+
+        # Drop punctuation-only fragments (e.g., '.....') that skew chunking.
+        if not re.search(r"[a-z0-9\u0980-\u09ff]", candidate.lower()):
+            index += 1
+            continue
+
+        cleaned_sentences.append(candidate)
+        index += 1
+
+    return cleaned_sentences
 
 
 def tokenize_words(text: str) -> list[str]:

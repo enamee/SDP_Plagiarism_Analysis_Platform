@@ -22,8 +22,42 @@ def clean_text(text: str) -> str:
     text = "\n".join(lines)
 
     text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"([.!?।॥])(?=[A-Za-z0-9\u0980-\u09ff])", r"\1 ", text)
+    text = re.sub(r"\s{2,}", " ", text)
 
     return text.strip()
+
+
+def _text_quality_score(text: str) -> float:
+    cleaned = clean_text(text)
+    if not cleaned:
+        return 0.0
+
+    tokens = re.findall(r"\S+", cleaned)
+    if not tokens:
+        return 0.0
+
+    whitespace_ratio = cleaned.count(" ") / max(len(cleaned), 1)
+    avg_token_length = sum(len(token) for token in tokens) / len(tokens)
+
+    # Higher is better. Excessively long tokens generally indicate merged words.
+    length_penalty = max(0.0, (avg_token_length - 8.0) / 10.0)
+    return max(0.0, min((whitespace_ratio * 4.0) - length_penalty, 1.0))
+
+
+def _looks_like_spacing_artifact(text: str) -> bool:
+    cleaned = clean_text(text)
+    if len(cleaned) < 300:
+        return False
+
+    tokens = re.findall(r"\S+", cleaned)
+    if len(tokens) < 50:
+        return False
+
+    avg_token_length = sum(len(token) for token in tokens) / len(tokens)
+    whitespace_ratio = cleaned.count(" ") / max(len(cleaned), 1)
+
+    return whitespace_ratio < 0.11 or avg_token_length > 10.0
 
 
 def extract_text_from_txt(file_path: Path) -> str:
@@ -150,6 +184,15 @@ def extract_text_from_file(file_path: Path, extension: str) -> tuple[str, str | 
     if extension == ".pdf":
         text = extract_text_from_pdf(file_path)
         if text:
+            if _looks_like_spacing_artifact(text):
+                ocr_text, _ = extract_text_from_pdf_with_ocr(file_path)
+                if ocr_text:
+                    native_score = _text_quality_score(text)
+                    ocr_score = _text_quality_score(ocr_text)
+
+                    if ocr_score >= native_score + 0.1:
+                        return ocr_text, "Text extracted using OCR enhancement (better spacing/layout)."
+
             return text, None
 
         ocr_text, ocr_warning = extract_text_from_pdf_with_ocr(file_path)
