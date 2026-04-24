@@ -287,7 +287,7 @@ function DashboardPage() {
                      Type: {doc.source_type} | Extension: {doc.extension} | Extracted Characters: {doc.extracted_char_count}
                    </p>
                    <p className="text-sm text-slate-600 mb-2">
-                     Comparison Group: {doc.comparison_group} | Document Type: {doc.document_type}
+                     Comparison Group: {doc.comparison_group || 'N/A'} | Document Type: {doc.document_type || 'N/A'}
                    </p>
                    <p className="text-sm text-slate-600 mb-2">
                      Topic Tags: {doc.topic_tag || 'N/A'}
@@ -346,8 +346,8 @@ function DashboardPage() {
                  <tr key={doc.id} className="hover:bg-slate-50">
                    <td className="px-4 py-3 border-b">{doc.id}</td>
                    <td className="px-4 py-3 border-b">{doc.title}</td>
-                   <td className="px-4 py-3 border-b">{doc.comparison_group}</td>
-                   <td className="px-4 py-3 border-b">{doc.document_type}</td>
+                   <td className="px-4 py-3 border-b">{doc.comparison_group || 'N/A'}</td>
+                   <td className="px-4 py-3 border-b">{doc.document_type || 'N/A'}</td>
                    <td className="px-4 py-3 border-b">{doc.topic_tag || 'N/A'}</td>
                    <td className="px-4 py-3 border-b capitalize">{doc.source_type}</td>
                    <td className="px-4 py-3 border-b">{doc.extension}</td>
