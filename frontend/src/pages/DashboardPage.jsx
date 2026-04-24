@@ -9,6 +9,15 @@ import {
  updateDocumentMetadata,
 } from '../services/documentService'
 
+function isOcrSuccessMessage(extractionWarning) {
+ if (!extractionWarning) {
+   return false
+ }
+
+ const normalized = extractionWarning.toLowerCase()
+ return normalized.includes('ocr') && normalized.includes('text extracted')
+}
+
 function DashboardPage() {
  const [summary, setSummary] = useState(null)
  const [documents, setDocuments] = useState([])
@@ -284,7 +293,9 @@ function DashboardPage() {
                      Topic Tags: {doc.topic_tag || 'N/A'}
                    </p>
 
-                   {doc.extraction_warning ? (
+                   {isOcrSuccessMessage(doc.extraction_warning) ? (
+                     <StatusBadge label="Processed using OCR" type="success" />
+                   ) : doc.extraction_warning ? (
                      <StatusBadge label="Extraction Warning" type="warning" />
                    ) : (
                      <StatusBadge label="Processed" type="success" />
@@ -342,7 +353,9 @@ function DashboardPage() {
                    <td className="px-4 py-3 border-b">{doc.extension}</td>
                    <td className="px-4 py-3 border-b">{doc.extracted_char_count}</td>
                    <td className="px-4 py-3 border-b">
-                     {doc.extraction_warning ? (
+                     {isOcrSuccessMessage(doc.extraction_warning) ? (
+                       <StatusBadge label="OCR Used" type="success" />
+                     ) : doc.extraction_warning ? (
                        <StatusBadge label="Yes" type="warning" />
                      ) : (
                        <StatusBadge label="No" type="success" />
