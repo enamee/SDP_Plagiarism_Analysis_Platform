@@ -2,12 +2,15 @@ import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { getCachedPageState, setCachedPageState } from '../services/pageStateCache'
 import {
  compareDocuments,
  downloadComparisonReport,
  getDocumentById,
  getDocuments,
 } from '../services/documentService'
+
+const PAGE_CACHE_KEY = 'compare'
 
 function splitTextIntoDisplaySentences(text) {
  if (!text) return []
@@ -133,25 +136,48 @@ function HighlightedTextPanel({
 }
 
 function ComparePage() {
+ const cachedState = getCachedPageState(PAGE_CACHE_KEY) || {}
  const [searchParams] = useSearchParams()
  const [documents, setDocuments] = useState([])
- const [documentAId, setDocumentAId] = useState('')
- const [documentBId, setDocumentBId] = useState('')
+ const [documentAId, setDocumentAId] = useState(cachedState.documentAId || '')
+ const [documentBId, setDocumentBId] = useState(cachedState.documentBId || '')
  const [loadingDocuments, setLoadingDocuments] = useState(true)
  const [comparing, setComparing] = useState(false)
  const [downloadingReport, setDownloadingReport] = useState(false)
  const [error, setError] = useState('')
- const [result, setResult] = useState(null)
- const [documentADetail, setDocumentADetail] = useState(null)
- const [documentBDetail, setDocumentBDetail] = useState(null)
- const [useSemanticScoring, setUseSemanticScoring] = useState(true)
- const [sentenceMatchThreshold, setSentenceMatchThreshold] = useState(0.4)
- const [activeSentenceSelection, setActiveSentenceSelection] = useState(null)
+ const [result, setResult] = useState(cachedState.result || null)
+ const [documentADetail, setDocumentADetail] = useState(cachedState.documentADetail || null)
+ const [documentBDetail, setDocumentBDetail] = useState(cachedState.documentBDetail || null)
+ const [useSemanticScoring, setUseSemanticScoring] = useState(cachedState.useSemanticScoring ?? true)
+ const [sentenceMatchThreshold, setSentenceMatchThreshold] = useState(cachedState.sentenceMatchThreshold ?? 0.4)
+ const [activeSentenceSelection, setActiveSentenceSelection] = useState(cachedState.activeSentenceSelection || null)
  const [lastAutoComparedQueryKey, setLastAutoComparedQueryKey] = useState('')
 
  const queryDocumentAId = searchParams.get('documentAId')
  const queryDocumentBId = searchParams.get('documentBId')
  const comparisonQueryKey = `${queryDocumentAId || ''}:${queryDocumentBId || ''}`
+
+ useEffect(() => {
+   setCachedPageState(PAGE_CACHE_KEY, {
+     documentAId,
+     documentBId,
+     result,
+     documentADetail,
+     documentBDetail,
+     useSemanticScoring,
+     sentenceMatchThreshold,
+     activeSentenceSelection,
+   })
+ }, [
+   activeSentenceSelection,
+   documentADetail,
+   documentAId,
+   documentBDetail,
+   documentBId,
+   result,
+   sentenceMatchThreshold,
+   useSemanticScoring,
+ ])
 
  useEffect(() => {
    async function loadDocuments() {
