@@ -150,6 +150,10 @@ function ComparisonDetailsPage() {
   const [topMatches, setTopMatches] = useState(initialTopMatches)
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [details?.documentAId, details?.documentBId])
+
+  useEffect(() => {
     async function loadDocuments() {
       if (!details) {
         return
