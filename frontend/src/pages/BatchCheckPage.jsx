@@ -1,9 +1,10 @@
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getCachedPageState, setCachedPageState } from '../services/pageStateCache'
 import { getDocuments, runBatchCheck } from '../services/documentService'
+import { filterDocumentsByQuery, getUniqueDocumentValues } from '../utils/documentFilters'
 
 const PAGE_CACHE_KEY = 'batch-check'
 
@@ -12,6 +13,10 @@ function BatchCheckPage() {
 
  const [documents, setDocuments] = useState([])
  const [selectedIds, setSelectedIds] = useState(cachedState.selectedIds || [])
+ const [documentSearchQuery, setDocumentSearchQuery] = useState(cachedState.documentSearchQuery || '')
+ const [selectedComparisonGroups, setSelectedComparisonGroups] = useState(cachedState.selectedComparisonGroups || [])
+ const [selectedDocumentTypes, setSelectedDocumentTypes] = useState(cachedState.selectedDocumentTypes || [])
+ const [selectedTopicTags, setSelectedTopicTags] = useState(cachedState.selectedTopicTags || [])
  const [minSimilarity, setMinSimilarity] = useState(cachedState.minSimilarity ?? 0.2)
  const [maxPairs, setMaxPairs] = useState(cachedState.maxPairs ?? 20)
  const [useSemanticScoring, setUseSemanticScoring] = useState(cachedState.useSemanticScoring ?? true)
@@ -40,13 +45,58 @@ function BatchCheckPage() {
  useEffect(() => {
    setCachedPageState(PAGE_CACHE_KEY, {
      selectedIds,
+     documentSearchQuery,
+     selectedComparisonGroups,
+     selectedDocumentTypes,
+     selectedTopicTags,
      minSimilarity,
      maxPairs,
      useSemanticScoring,
      sentenceMatchThreshold,
      result,
    })
- }, [maxPairs, minSimilarity, result, selectedIds, sentenceMatchThreshold, useSemanticScoring])
+ }, [
+   documentSearchQuery,
+   maxPairs,
+   minSimilarity,
+   result,
+   selectedComparisonGroups,
+   selectedDocumentTypes,
+   selectedIds,
+   selectedTopicTags,
+   sentenceMatchThreshold,
+   useSemanticScoring,
+ ])
+
+ const availableComparisonGroups = useMemo(() => getUniqueDocumentValues(documents, 'comparison_group'), [documents])
+ const availableDocumentTypes = useMemo(() => getUniqueDocumentValues(documents, 'document_type'), [documents])
+ const availableTopicTags = useMemo(() => getUniqueDocumentValues(documents, 'topic_tag'), [documents])
+
+ const filteredDocuments = useMemo(() => {
+   return filterDocumentsByQuery(documents, documentSearchQuery).filter((document) => {
+     if (selectedComparisonGroups.length > 0 && !selectedComparisonGroups.includes(document.comparison_group)) {
+       return false
+     }
+
+     if (selectedDocumentTypes.length > 0 && !selectedDocumentTypes.includes(document.document_type)) {
+       return false
+     }
+
+     if (selectedTopicTags.length > 0 && !selectedTopicTags.includes(String(document.topic_tag || '').trim())) {
+       return false
+     }
+
+     return true
+   })
+ }, [documents, documentSearchQuery, selectedComparisonGroups, selectedDocumentTypes, selectedTopicTags])
+
+ const toggleFacetValue = (setter, value) => {
+   setter((previous) =>
+     previous.includes(value)
+       ? previous.filter((item) => item !== value)
+       : [...previous, value]
+   )
+ }
 
  const handleToggleDocument = (documentId) => {
    setSelectedIds((prev) =>
@@ -62,6 +112,14 @@ function BatchCheckPage() {
 
  const handleUnselectAll = () => {
    setSelectedIds([])
+ }
+
+ const handleSelectFiltered = () => {
+   setSelectedIds((previous) => Array.from(new Set([...previous, ...filteredDocuments.map((document) => document.id)])))
+ }
+
+ const handleUnselectFiltered = () => {
+   setSelectedIds((previous) => previous.filter((id) => !filteredDocuments.some((document) => document.id === id)))
  }
 
  const handleRunBatchCheck = async (event) => {
@@ -118,21 +176,125 @@ function BatchCheckPage() {
                Select Documents
              </label>
 
-             <div className="mb-3 flex flex-wrap gap-2">
-               <button
-                 type="button"
-                 onClick={handleSelectAll}
-                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-50"
-               >
-                 Select All
-               </button>
-               <button
-                 type="button"
-                 onClick={handleUnselectAll}
-                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-50"
-               >
-                 Unselect All
-               </button>
+             <div className="mb-3 grid gap-4 lg:grid-cols-2">
+               <div>
+                 <label className="block text-sm font-medium text-slate-700 mb-2">
+                   Search Documents
+                 </label>
+                 <input
+                   type="search"
+                   value={documentSearchQuery}
+                   onChange={(e) => setDocumentSearchQuery(e.target.value)}
+                   placeholder="Search by title, group, type, tag, extension, or scope"
+                   className="w-full rounded-lg border border-slate-300 px-4 py-2 bg-white"
+                 />
+               </div>
+
+               <div className="flex flex-wrap gap-2 lg:justify-end lg:items-end">
+                 <button
+                   type="button"
+                   onClick={handleSelectAll}
+                   className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-50"
+                 >
+                   Select All
+                 </button>
+                 <button
+                   type="button"
+                   onClick={handleSelectFiltered}
+                   className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-50"
+                 >
+                   Select Filtered
+                 </button>
+                 <button
+                   type="button"
+                   onClick={handleUnselectAll}
+                   className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-50"
+                 >
+                   Unselect All
+                 </button>
+                 <button
+                   type="button"
+                   onClick={handleUnselectFiltered}
+                   className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-50"
+                 >
+                   Unselect Filtered
+                 </button>
+               </div>
+             </div>
+
+             <div className="grid gap-4 lg:grid-cols-3 mb-4">
+               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                 <p className="text-sm font-medium text-slate-700 mb-2">Comparison Group</p>
+                 <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
+                   {availableComparisonGroups.map((value) => {
+                     const isActive = selectedComparisonGroups.includes(value)
+                     return (
+                       <button
+                         key={value}
+                         type="button"
+                         onClick={() => toggleFacetValue(setSelectedComparisonGroups, value)}
+                         className={`rounded-full border px-3 py-1 text-sm transition ${
+                           isActive
+                             ? 'border-slate-900 bg-slate-900 text-white'
+                             : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                         }`}
+                       >
+                         {value}
+                       </button>
+                     )
+                   })}
+                 </div>
+               </div>
+
+               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                 <p className="text-sm font-medium text-slate-700 mb-2">Document Type</p>
+                 <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
+                   {availableDocumentTypes.map((value) => {
+                     const isActive = selectedDocumentTypes.includes(value)
+                     return (
+                       <button
+                         key={value}
+                         type="button"
+                         onClick={() => toggleFacetValue(setSelectedDocumentTypes, value)}
+                         className={`rounded-full border px-3 py-1 text-sm transition ${
+                           isActive
+                             ? 'border-slate-900 bg-slate-900 text-white'
+                             : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                         }`}
+                       >
+                         {value}
+                       </button>
+                     )
+                   })}
+                 </div>
+               </div>
+
+               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                 <p className="text-sm font-medium text-slate-700 mb-2">Topic Tag</p>
+                 <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
+                   {availableTopicTags.map((value) => {
+                     const isActive = selectedTopicTags.includes(value)
+                     return (
+                       <button
+                         key={value}
+                         type="button"
+                         onClick={() => toggleFacetValue(setSelectedTopicTags, value)}
+                         className={`rounded-full border px-3 py-1 text-sm transition ${
+                           isActive
+                             ? 'border-slate-900 bg-slate-900 text-white'
+                             : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'
+                         }`}
+                       >
+                         {value}
+                       </button>
+                     )
+                   })}
+                 </div>
+               </div>
+             </div>
+
+             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 mb-3">
+               Showing <strong>{filteredDocuments.length}</strong> of <strong>{documents.length}</strong> documents
              </div>
 
              {documents.length === 0 ? (
@@ -143,28 +305,35 @@ function BatchCheckPage() {
 
              ) : (
                <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 p-4 bg-slate-50 space-y-3">
-                 {documents.map((doc) => (
-                   <label
-                     key={doc.id}
-                     className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 cursor-pointer"
-                   >
-                     <input
-                       type="checkbox"
-                       checked={selectedIds.includes(doc.id)}
-                       onChange={() => handleToggleDocument(doc.id)}
-                       className="mt-1"
-                     />
+                 {filteredDocuments.length === 0 ? (
+                   <EmptyState
+                     title="No documents match the selected filters"
+                     description="Adjust the search, comparison group, type, or tag filters and try again."
+                   />
+                 ) : (
+                   filteredDocuments.map((doc) => (
+                     <label
+                       key={doc.id}
+                       className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 cursor-pointer"
+                     >
+                       <input
+                         type="checkbox"
+                         checked={selectedIds.includes(doc.id)}
+                         onChange={() => handleToggleDocument(doc.id)}
+                         className="mt-1"
+                       />
 
-                     <div>
-                       <p className="font-medium">
-                         #{doc.id} - {doc.title}
-                       </p>
-                       <p className="text-sm text-slate-600">
-                         Type: {doc.source_type} | Extension: {doc.extension} | Extracted Characters: {doc.extracted_char_count}
-                       </p>
-                     </div>
-                   </label>
-                 ))}
+                       <div>
+                         <p className="font-medium">
+                           #{doc.id} - {doc.title}
+                         </p>
+                         <p className="text-sm text-slate-600">
+                           Group: {doc.comparison_group} | Type: {doc.document_type} | Tag: {doc.topic_tag || 'Untagged'}
+                         </p>
+                       </div>
+                     </label>
+                   ))
+                 )}
                </div>
              )}
            </div>
@@ -317,7 +486,7 @@ function BatchCheckPage() {
                        </p>
                      </div>
 
-                     <div className="text-right">
+                     <div className="text-right flex flex-col gap-2 items-start md:items-end">
                        <p className="text-2xl font-bold">{pair.overall_percentage}%</p>
                        <StatusBadge
                         label={pair.similarity_label}
@@ -346,60 +515,12 @@ function BatchCheckPage() {
                              sentenceMatchThreshold,
                            },
                          }}
-                         className="inline-block mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
+                         className="inline-block rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
                        >
                          View Details
                        </Link>
 
                      </div>
-                   </div>
-
-                   <div>
-                     <h5 className="font-medium mb-3">Top Matching Sentences</h5>
-
-                     {pair.top_matches.length === 0 ? (
-                       <p className="text-sm text-slate-600">
-                         No strong sentence-level matches found.
-                       </p>
-                     ) : (
-                       <div className="space-y-3">
-                         {pair.top_matches.slice(0, 3).map((match, matchIndex) => (
-                           <div
-                             key={matchIndex}
-                             className="rounded-xl border border-slate-200 bg-white p-4"
-                           >
-                             <div className="flex justify-between items-center mb-2">
-                               <p className="text-sm font-semibold">
-                                 Match #{matchIndex + 1}
-                               </p>
-                               <p className="text-sm text-slate-600">
-                                 {(match.similarity * 100).toFixed(2)}%
-                               </p>
-                             </div>
-
-                             <div className="grid md:grid-cols-2 gap-4">
-                               <div>
-                                 <p className="text-xs font-medium text-slate-500 mb-1">
-                                   Sentence from Document A
-                                 </p>
-                                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm whitespace-pre-wrap">
-                                   {match.sentence_a}
-                                 </div>
-                               </div>
-
-                               <div>
-                                 <p className="text-xs font-medium text-slate-500 mb-1">
-                                   Sentence from Document B
-                                 </p>
-                                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm whitespace-pre-wrap">
-                                   {match.sentence_b}
-                                 </div>
-                               </div>
-                             </div>
-                           </div>
-                         ))}
-                       </div>
-                     )}
                    </div>
                  </div>
                ))}

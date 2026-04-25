@@ -289,7 +289,7 @@ function DashboardPage() {
          <div>
            <h2 className="text-2xl font-bold mb-2">Dashboard</h2>
            <p className="text-slate-700">
-             Overview and management panel for the plagiarism analysis system.
+             Overview and management panel for the similarity analysis system.
            </p>
          </div>
 

@@ -4,6 +4,7 @@ import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import { getCachedPageState, setCachedPageState } from '../services/pageStateCache'
 import { getDocuments, getShortlist, runCorpusCheck } from '../services/documentService'
+import { filterDocumentsByQuery } from '../utils/documentFilters'
 
 const PAGE_CACHE_KEY = 'corpus-check'
 
@@ -12,6 +13,7 @@ function CorpusCheckPage() {
 
   const [documents, setDocuments] = useState([])
   const [selectedDocumentId, setSelectedDocumentId] = useState(cachedState.selectedDocumentId || '')
+  const [documentSearchQuery, setDocumentSearchQuery] = useState(cachedState.documentSearchQuery || '')
 
   const [resultTopK, setResultTopK] = useState(cachedState.resultTopK ?? 5)
   const [shortlistTopK, setShortlistTopK] = useState(cachedState.shortlistTopK ?? 20)
@@ -47,6 +49,7 @@ function CorpusCheckPage() {
   useEffect(() => {
     setCachedPageState(PAGE_CACHE_KEY, {
       selectedDocumentId,
+      documentSearchQuery,
       resultTopK,
       shortlistTopK,
       sameScopeFirst,
@@ -64,9 +67,22 @@ function CorpusCheckPage() {
     useSemanticScoring,
     sentenceMatchThreshold,
     selectedDocumentId,
+    documentSearchQuery,
     shortlistResult,
     shortlistTopK,
   ])
+
+  const filteredDocuments = filterDocumentsByQuery(documents, documentSearchQuery)
+
+  const selectedDocumentVisible =
+    selectedDocumentId &&
+    !filteredDocuments.some((document) => String(document.id) === String(selectedDocumentId))
+      ? documents.find((document) => String(document.id) === String(selectedDocumentId))
+      : null
+
+  const visibleDocuments = selectedDocumentVisible
+    ? [selectedDocumentVisible, ...filteredDocuments]
+    : filteredDocuments
 
   const handleRunShortlist = async (event) => {
     event.preventDefault()
@@ -153,6 +169,17 @@ function CorpusCheckPage() {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Search Source Document
+                </label>
+                <input
+                  type="search"
+                  value={documentSearchQuery}
+                  onChange={(e) => setDocumentSearchQuery(e.target.value)}
+                  placeholder="Search by title, group, type, tag, or scope"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-2 bg-white mb-3"
+                />
+
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Source Document
                 </label>
                 <select
@@ -161,9 +188,9 @@ function CorpusCheckPage() {
                   className="w-full rounded-lg border border-slate-300 px-4 py-2 bg-white"
                 >
                   <option value="">Select a document</option>
-                  {documents.map((doc) => (
+                  {visibleDocuments.map((doc) => (
                     <option key={doc.id} value={doc.id}>
-                      #{doc.id} - {doc.title} ({doc.extension}) [{doc.scope_key}]
+                      #{doc.id} - {doc.title} ({doc.extension}) [{doc.comparison_group}] {doc.document_type}
                     </option>
                   ))}
                 </select>
@@ -346,9 +373,6 @@ function CorpusCheckPage() {
                           label={item.same_scope ? 'Same Scope' : 'Different Scope'}
                           type={item.same_scope ? 'success' : 'info'}
                         />
-                        <p className="text-sm text-slate-600">
-                          Retrieval rank score: {item.rank_score}
-                        </p>
                       </div>
                     </div>
                   </div>
@@ -468,9 +492,6 @@ function CorpusCheckPage() {
                           label={item.same_scope ? 'Same Scope' : 'Different Scope'}
                           type={item.same_scope ? 'success' : 'info'}
                         />
-                        <p className="text-sm text-slate-600">
-                          Retrieval rank: {item.retrieval_rank_score}
-                        </p>
                         <Link
                           to="/comparison-details"
                           state={{
@@ -492,54 +513,6 @@ function CorpusCheckPage() {
                           View Details
                         </Link>
                       </div>
-                    </div>
-
-                    <div>
-                      <h5 className="font-medium mb-3">Top Matching Sentences</h5>
-
-                      {item.top_matches.length === 0 ? (
-                        <p className="text-sm text-slate-600">
-                          No strong sentence-level matches found.
-                        </p>
-                      ) : (
-                        <div className="space-y-3">
-                          {item.top_matches.slice(0, 3).map((match, matchIndex) => (
-                            <div
-                              key={matchIndex}
-                              className="rounded-xl border border-slate-200 bg-white p-4"
-                            >
-                              <div className="flex justify-between items-center mb-2">
-                                <p className="text-sm font-semibold">
-                                  Match #{matchIndex + 1}
-                                </p>
-                                <p className="text-sm text-slate-600">
-                                  {(match.similarity * 100).toFixed(2)}%
-                                </p>
-                              </div>
-
-                              <div className="grid md:grid-cols-2 gap-4">
-                                <div>
-                                  <p className="text-xs font-medium text-slate-500 mb-1">
-                                    Source Document Sentence
-                                  </p>
-                                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm whitespace-pre-wrap">
-                                    {match.sentence_a}
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <p className="text-xs font-medium text-slate-500 mb-1">
-                                    Candidate Document Sentence
-                                  </p>
-                                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm whitespace-pre-wrap">
-                                    {match.sentence_b}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
