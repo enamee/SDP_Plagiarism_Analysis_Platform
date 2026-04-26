@@ -2,16 +2,29 @@ import { useEffect, useState } from 'react'
 import { getDocuments, runStyleShiftAnalysis } from '../services/documentService'
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
+import { getCachedPageState, setCachedPageState } from '../services/pageStateCache'
+
+const PAGE_CACHE_KEY = 'reports'
 
 function ReportsPage() {
+  const cachedState = getCachedPageState(PAGE_CACHE_KEY) || {}
   const [documents, setDocuments] = useState([])
-  const [selectedDocumentId, setSelectedDocumentId] = useState('')
-  const [chunkSize, setChunkSize] = useState(5)
-  const [anomalyThreshold, setAnomalyThreshold] = useState(1.2)
+  const [selectedDocumentId, setSelectedDocumentId] = useState(cachedState.selectedDocumentId || '')
+  const [chunkSize, setChunkSize] = useState(cachedState.chunkSize ?? 5)
+  const [anomalyThreshold, setAnomalyThreshold] = useState(cachedState.anomalyThreshold ?? 1.2)
   const [loadingDocuments, setLoadingDocuments] = useState(true)
   const [runningAnalysis, setRunningAnalysis] = useState(false)
   const [error, setError] = useState('')
-  const [result, setResult] = useState(null)
+  const [result, setResult] = useState(cachedState.result || null)
+
+  useEffect(() => {
+    setCachedPageState(PAGE_CACHE_KEY, {
+      selectedDocumentId,
+      chunkSize,
+      anomalyThreshold,
+      result,
+    })
+  }, [anomalyThreshold, chunkSize, result, selectedDocumentId])
 
   useEffect(() => {
     async function loadDocuments() {

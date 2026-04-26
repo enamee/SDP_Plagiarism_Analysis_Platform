@@ -2,12 +2,16 @@ import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { getCachedPageState, setCachedPageState } from '../services/pageStateCache'
+import { filterDocumentsByQuery } from '../utils/documentFilters'
 import {
  compareDocuments,
  downloadComparisonReport,
  getDocumentById,
  getDocuments,
 } from '../services/documentService'
+
+const PAGE_CACHE_KEY = 'compare'
 
 function splitTextIntoDisplaySentences(text) {
  if (!text) return []
@@ -53,6 +57,24 @@ function normalizeSentence(sentence) {
   .replace(/[^\p{L}\p{N}\s]/gu, ' ')
    .replace(/\s+/g, ' ')
    .trim()
+}
+
+function keepSelectedDocumentVisible(documents, filteredDocuments, selectedDocumentId) {
+ if (!selectedDocumentId) {
+   return filteredDocuments
+ }
+
+ const selectedDocument = documents.find((document) => String(document.id) === String(selectedDocumentId))
+
+ if (!selectedDocument) {
+   return filteredDocuments
+ }
+
+ if (filteredDocuments.some((document) => String(document.id) === String(selectedDocumentId))) {
+   return filteredDocuments
+ }
+
+ return [selectedDocument, ...filteredDocuments]
 }
 
 function HighlightedTextPanel({
@@ -133,24 +155,64 @@ function HighlightedTextPanel({
 }
 
 function ComparePage() {
+ const cachedState = getCachedPageState(PAGE_CACHE_KEY) || {}
  const [searchParams] = useSearchParams()
  const [documents, setDocuments] = useState([])
- const [documentAId, setDocumentAId] = useState('')
- const [documentBId, setDocumentBId] = useState('')
+ const [documentAId, setDocumentAId] = useState(cachedState.documentAId || '')
+ const [documentBId, setDocumentBId] = useState(cachedState.documentBId || '')
+ const [documentASearchQuery, setDocumentASearchQuery] = useState(cachedState.documentASearchQuery || '')
+ const [documentBSearchQuery, setDocumentBSearchQuery] = useState(cachedState.documentBSearchQuery || '')
  const [loadingDocuments, setLoadingDocuments] = useState(true)
  const [comparing, setComparing] = useState(false)
  const [downloadingReport, setDownloadingReport] = useState(false)
  const [error, setError] = useState('')
- const [result, setResult] = useState(null)
- const [documentADetail, setDocumentADetail] = useState(null)
- const [documentBDetail, setDocumentBDetail] = useState(null)
- const [useSemanticScoring, setUseSemanticScoring] = useState(true)
- const [activeSentenceSelection, setActiveSentenceSelection] = useState(null)
+ const [result, setResult] = useState(cachedState.result || null)
+ const [documentADetail, setDocumentADetail] = useState(cachedState.documentADetail || null)
+ const [documentBDetail, setDocumentBDetail] = useState(cachedState.documentBDetail || null)
+ const [useSemanticScoring, setUseSemanticScoring] = useState(cachedState.useSemanticScoring ?? true)
+ const [sentenceMatchThreshold, setSentenceMatchThreshold] = useState(cachedState.sentenceMatchThreshold ?? 0.4)
+ const [activeSentenceSelection, setActiveSentenceSelection] = useState(cachedState.activeSentenceSelection || null)
  const [lastAutoComparedQueryKey, setLastAutoComparedQueryKey] = useState('')
 
  const queryDocumentAId = searchParams.get('documentAId')
  const queryDocumentBId = searchParams.get('documentBId')
  const comparisonQueryKey = `${queryDocumentAId || ''}:${queryDocumentBId || ''}`
+
+ useEffect(() => {
+   setCachedPageState(PAGE_CACHE_KEY, {
+     documentAId,
+     documentBId,
+    documentASearchQuery,
+    documentBSearchQuery,
+     result,
+     documentADetail,
+     documentBDetail,
+     useSemanticScoring,
+     sentenceMatchThreshold,
+     activeSentenceSelection,
+   })
+ }, [
+   activeSentenceSelection,
+   documentADetail,
+   documentAId,
+   documentBDetail,
+   documentBId,
+   documentASearchQuery,
+   documentBSearchQuery,
+   result,
+   sentenceMatchThreshold,
+   useSemanticScoring,
+ ])
+
+ const filteredDocumentAOptions = useMemo(() => {
+   const queryFilteredDocuments = filterDocumentsByQuery(documents, documentASearchQuery)
+   return keepSelectedDocumentVisible(documents, queryFilteredDocuments, documentAId)
+ }, [documentAId, documentASearchQuery, documents])
+
+ const filteredDocumentBOptions = useMemo(() => {
+   const queryFilteredDocuments = filterDocumentsByQuery(documents, documentBSearchQuery)
+   return keepSelectedDocumentVisible(documents, queryFilteredDocuments, documentBId)
+ }, [documentBId, documentBSearchQuery, documents])
 
  useEffect(() => {
    async function loadDocuments() {
@@ -193,7 +255,12 @@ function ComparePage() {
      setComparing(true)
 
      const [comparisonResult, docA, docB] = await Promise.all([
-       compareDocuments(selectedDocumentAId, selectedDocumentBId, semanticEnabled),
+         compareDocuments(
+           selectedDocumentAId,
+           selectedDocumentBId,
+           semanticEnabled,
+           sentenceMatchThreshold
+         ),
        getDocumentById(selectedDocumentAId),
        getDocumentById(selectedDocumentBId),
      ])
@@ -259,7 +326,12 @@ function ComparePage() {
 
    try {
      setDownloadingReport(true)
-     await downloadComparisonReport(documentAId, documentBId, useSemanticScoring)
+    await downloadComparisonReport(
+      documentAId,
+      documentBId,
+      useSemanticScoring,
+      sentenceMatchThreshold
+    )
    } catch (err) {
      setError(err.message)
    } finally {
@@ -357,6 +429,17 @@ function ComparePage() {
            <div className="grid md:grid-cols-2 gap-4">
              <div>
                <label className="block text-sm font-medium text-slate-700 mb-2">
+                 Search Document A
+               </label>
+               <input
+                 type="search"
+                 value={documentASearchQuery}
+                 onChange={(event) => setDocumentASearchQuery(event.target.value)}
+                 placeholder="Search by title, group, type, tag, or scope"
+                 className="w-full rounded-lg border border-slate-300 px-4 py-2 bg-white mb-3"
+               />
+
+               <label className="block text-sm font-medium text-slate-700 mb-2">
                  Document A
                </label>
                <select
@@ -365,15 +448,26 @@ function ComparePage() {
                  className="w-full rounded-lg border border-slate-300 px-4 py-2 bg-white"
                >
                  <option value="">Select Document A</option>
-                 {documents.map((doc) => (
+                 {filteredDocumentAOptions.map((doc) => (
                    <option key={doc.id} value={doc.id}>
-                     #{doc.id} - {doc.title} ({doc.extension})
+                     #{doc.id} - {doc.title} ({doc.extension}) [{doc.comparison_group}] {doc.document_type}
                    </option>
                  ))}
                </select>
              </div>
 
              <div>
+               <label className="block text-sm font-medium text-slate-700 mb-2">
+                 Search Document B
+               </label>
+               <input
+                 type="search"
+                 value={documentBSearchQuery}
+                 onChange={(event) => setDocumentBSearchQuery(event.target.value)}
+                 placeholder="Search by title, group, type, tag, or scope"
+                 className="w-full rounded-lg border border-slate-300 px-4 py-2 bg-white mb-3"
+               />
+
                <label className="block text-sm font-medium text-slate-700 mb-2">
                  Document B
                </label>
@@ -383,9 +477,9 @@ function ComparePage() {
                  className="w-full rounded-lg border border-slate-300 px-4 py-2 bg-white"
                >
                  <option value="">Select Document B</option>
-                 {documents.map((doc) => (
+                 {filteredDocumentBOptions.map((doc) => (
                    <option key={doc.id} value={doc.id}>
-                     #{doc.id} - {doc.title} ({doc.extension})
+                     #{doc.id} - {doc.title} ({doc.extension}) [{doc.comparison_group}] {doc.document_type}
                    </option>
                  ))}
                </select>
@@ -396,11 +490,30 @@ function ComparePage() {
              <input
                type="checkbox"
                checked={useSemanticScoring}
-               onChange={(event) => setUseSemanticScoring(event.target.checked)}
+               onChange={(event) => {
+                 const checked = event.target.checked
+                 setUseSemanticScoring(checked)
+                 setSentenceMatchThreshold(checked ? 0.4 : 0.3)
+               }}
                className="h-4 w-4 rounded border-slate-300"
              />
              Use semantic scoring (recommended for cross-language/paraphrased overlap)
            </label>
+
+           <div>
+             <label className="block text-sm font-medium text-slate-700 mb-2">
+               Sentence Match Threshold: {(Number(sentenceMatchThreshold) * 100).toFixed(0)}%
+             </label>
+             <input
+               type="range"
+               min="0"
+               max="100"
+               step="1"
+               value={Math.round(Number(sentenceMatchThreshold) * 100)}
+               onChange={(event) => setSentenceMatchThreshold(Number(event.target.value) / 100)}
+               className="w-full"
+             />
+           </div>
 
            {error && (
              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">

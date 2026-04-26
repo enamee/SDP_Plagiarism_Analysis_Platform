@@ -34,6 +34,13 @@ def run_batch_check(payload: BatchCheckRequest, db: Session = Depends(get_db)):
            detail="max_pairs must be at least 1."
        )
 
+   if payload.sentence_match_threshold is not None:
+       if payload.sentence_match_threshold < 0 or payload.sentence_match_threshold > 1:
+           raise HTTPException(
+               status_code=400,
+               detail="sentence_match_threshold must be between 0 and 1.",
+           )
+
    log_event(
         "batch_check.start",
         "Batch check started",
@@ -67,8 +74,10 @@ def run_batch_check(payload: BatchCheckRequest, db: Session = Depends(get_db)):
            document_a.extracted_text,
            document_b.extracted_text,
            sentence_top_k=None,
+           sentence_threshold=payload.sentence_match_threshold,
            max_sentences_per_document=None,
            use_semantic_scoring=payload.use_semantic_scoring,
+           include_sentence_matches=False,
        )
 
        if comparison["overall_similarity"] >= payload.min_similarity:
@@ -80,7 +89,7 @@ def run_batch_check(payload: BatchCheckRequest, db: Session = Depends(get_db)):
                "overall_similarity": comparison["overall_similarity"],
                "overall_percentage": comparison["overall_percentage"],
                "similarity_label": comparison["similarity_label"],
-               "top_matches": comparison["top_matches"],
+               "top_matches": [],
            })
 
    pair_results.sort(

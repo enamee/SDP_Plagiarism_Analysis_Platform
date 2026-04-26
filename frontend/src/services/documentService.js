@@ -130,7 +130,12 @@ export async function reprocessDocument(documentId) {
  return data
 }
 
-export async function compareDocuments(documentAId, documentBId, useSemanticScoring = true) {
+export async function compareDocuments(
+ documentAId,
+ documentBId,
+ useSemanticScoring = true,
+ sentenceMatchThreshold = null
+) {
  const response = await fetch(`${API_BASE_URL}/api/compare/documents`, {
    method: 'POST',
    headers: {
@@ -140,6 +145,8 @@ export async function compareDocuments(documentAId, documentBId, useSemanticScor
      document_a_id: Number(documentAId),
      document_b_id: Number(documentBId),
      use_semantic_scoring: Boolean(useSemanticScoring),
+     sentence_match_threshold:
+       sentenceMatchThreshold === null ? null : Number(sentenceMatchThreshold),
    }),
  })
 
@@ -158,10 +165,16 @@ export async function runCorpusCheck(
   shortlistTopK = 20,
   sameScopeFirst = true,
   scopeOnly = false,
-  useSemanticScoring = true
+  useSemanticScoring = true,
+  sentenceMatchThreshold = null
 ) {
+  const thresholdQuery =
+    sentenceMatchThreshold === null
+      ? ''
+      : `&sentence_match_threshold=${Number(sentenceMatchThreshold)}`
+
   const response = await fetch(
-    `${API_BASE_URL}/api/corpus-check/${documentId}?result_top_k=${Number(resultTopK)}&shortlist_top_k=${Number(shortlistTopK)}&same_scope_first=${sameScopeFirst}&scope_only=${scopeOnly}&use_semantic_scoring=${Boolean(useSemanticScoring)}`
+    `${API_BASE_URL}/api/corpus-check/${documentId}?result_top_k=${Number(resultTopK)}&shortlist_top_k=${Number(shortlistTopK)}&same_scope_first=${sameScopeFirst}&scope_only=${scopeOnly}&use_semantic_scoring=${Boolean(useSemanticScoring)}${thresholdQuery}`
   )
 
   const data = await response.json()
@@ -173,7 +186,13 @@ export async function runCorpusCheck(
   return data
 }
 
-export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs = 20, useSemanticScoring = true) {
+export async function runBatchCheck(
+ documentIds,
+ minSimilarity = 0.2,
+ maxPairs = 20,
+ useSemanticScoring = true,
+ sentenceMatchThreshold = null
+) {
  const response = await fetch(`${API_BASE_URL}/api/batch-check`, {
    method: 'POST',
    headers: {
@@ -184,6 +203,8 @@ export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs =
      min_similarity: Number(minSimilarity),
      max_pairs: Number(maxPairs),
      use_semantic_scoring: Boolean(useSemanticScoring),
+     sentence_match_threshold:
+       sentenceMatchThreshold === null ? null : Number(sentenceMatchThreshold),
    }),
  })
 
@@ -196,7 +217,12 @@ export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs =
  return data
 }
 
-export async function generateGraph(documentIds = [], minSimilarity = 0.2, useSemanticScoring = true) {
+export async function generateGraph(
+ documentIds = [],
+ minSimilarity = 0.2,
+ useSemanticScoring = true,
+ sentenceMatchThreshold = null
+) {
  const response = await fetch(`${API_BASE_URL}/api/graph`, {
    method: 'POST',
    headers: {
@@ -206,6 +232,8 @@ export async function generateGraph(documentIds = [], minSimilarity = 0.2, useSe
      document_ids: documentIds.map((id) => Number(id)),
      min_similarity: Number(minSimilarity),
      use_semantic_scoring: Boolean(useSemanticScoring),
+     sentence_match_threshold:
+       sentenceMatchThreshold === null ? null : Number(sentenceMatchThreshold),
    }),
  })
 
@@ -240,8 +268,18 @@ export async function runStyleShiftAnalysis(documentId, chunkSize = 5, anomalyTh
  return data
 }
 
-export async function downloadComparisonReport(documentAId, documentBId, useSemanticScoring = true) {
- const downloadUrl = `${API_BASE_URL}/api/reports/comparison?document_a_id=${Number(documentAId)}&document_b_id=${Number(documentBId)}&use_semantic_scoring=${Boolean(useSemanticScoring)}`
+export async function downloadComparisonReport(
+ documentAId,
+ documentBId,
+ useSemanticScoring = true,
+ sentenceMatchThreshold = null
+) {
+ const thresholdQuery =
+   sentenceMatchThreshold === null
+     ? ''
+     : `&sentence_match_threshold=${Number(sentenceMatchThreshold)}`
+
+ const downloadUrl = `${API_BASE_URL}/api/reports/comparison?document_a_id=${Number(documentAId)}&document_b_id=${Number(documentBId)}&use_semantic_scoring=${Boolean(useSemanticScoring)}${thresholdQuery}`
 
  const link = document.createElement('a')
  link.href = downloadUrl

@@ -7,6 +7,7 @@ class GraphRequest(BaseModel):
     document_ids: list[int] = Field(default_factory=list)
     min_similarity: float = 0.2
     use_semantic_scoring: bool | None = None
+    sentence_match_threshold: float | None = None
 
 
 class GraphNode(BaseModel):

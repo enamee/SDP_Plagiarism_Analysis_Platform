@@ -33,6 +33,13 @@ def compare_documents(payload: CompareDocumentsRequest, db: Session = Depends(ge
     if not document_b.extracted_text.strip():
         raise HTTPException(status_code=400, detail="Document B has no extracted text.")
 
+    if payload.sentence_match_threshold is not None:
+        if payload.sentence_match_threshold < 0 or payload.sentence_match_threshold > 1:
+            raise HTTPException(
+                status_code=400,
+                detail="sentence_match_threshold must be between 0 and 1.",
+            )
+
     log_event(
         "comparison.start",
         "Document comparison started",
@@ -46,6 +53,7 @@ def compare_documents(payload: CompareDocumentsRequest, db: Session = Depends(ge
         document_a.extracted_text,
         document_b.extracted_text,
         sentence_top_k=None,
+        sentence_threshold=payload.sentence_match_threshold,
         max_sentences_per_document=None,
         use_semantic_scoring=payload.use_semantic_scoring,
         include_debug=True,
