@@ -3,9 +3,14 @@ import { uploadDocument } from '../services/documentService'
 
 function UploadPage() {
   const [title, setTitle] = useState('')
+  const [comparisonGroup, setComparisonGroup] = useState('')
+  const [documentType, setDocumentType] = useState('')
+  const [topicTag, setTopicTag] = useState('')
+
   const [inputMode, setInputMode] = useState('file')
   const [selectedFile, setSelectedFile] = useState(null)
   const [manualText, setManualText] = useState('')
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
@@ -21,6 +26,16 @@ function UploadPage() {
       return
     }
 
+    if (!comparisonGroup.trim()) {
+      setError('Please enter a comparison group.')
+      return
+    }
+
+    if (!documentType.trim()) {
+      setError('Please enter a document type.')
+      return
+    }
+
     if (inputMode === 'file' && !selectedFile) {
       setError('Please choose a file.')
       return
@@ -33,6 +48,9 @@ function UploadPage() {
 
     const formData = new FormData()
     formData.append('title', title)
+    formData.append('comparison_group', comparisonGroup)
+    formData.append('document_type', documentType)
+    formData.append('topic_tag', topicTag)
     formData.append('input_mode', inputMode)
 
     if (inputMode === 'file') {
@@ -62,21 +80,62 @@ function UploadPage() {
     <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
       <h2 className="text-2xl font-bold mb-3">Upload Documents</h2>
       <p className="text-slate-700 mb-6">
-        Upload TXT, PDF, DOCX files or paste text manually.
+        Upload TXT, PDF, DOCX files or paste text manually. Each document now belongs to a generic comparison group for smarter retrieval.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Document Title
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter a document title"
-            className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
-          />
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Document Title
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter a document title"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Comparison Group
+            </label>
+            <input
+              type="text"
+              value={comparisonGroup}
+              onChange={(e) => setComparisonGroup(e.target.value)}
+              placeholder="e.g. School Science Reports 2026"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Document Type
+            </label>
+            <input
+              type="text"
+              value={documentType}
+              onChange={(e) => setDocumentType(e.target.value)}
+              placeholder="e.g. report, essay, article"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Topic Tags (optional)
+            </label>
+            <input
+              type="text"
+              value={topicTag}
+              onChange={(e) => setTopicTag(e.target.value)}
+              placeholder="e.g. plagiarism, academic writing, nlp"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2 outline-none focus:border-slate-500"
+            />
+          </div>
         </div>
 
         <div>
@@ -160,27 +219,30 @@ function UploadPage() {
         </button>
       </form>
 
-            {result && (
+      {result && (
         <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
           <h3 className="text-lg font-semibold text-emerald-800 mb-3">
             Upload Successful
           </h3>
 
           <div className="space-y-2 text-sm text-slate-800">
+            <p><strong>ID:</strong> {result.document.id}</p>
             <p><strong>Title:</strong> {result.document.title}</p>
+            <p><strong>Comparison Group:</strong> {result.document.comparison_group}</p>
+            <p><strong>Document Type:</strong> {result.document.document_type}</p>
+            <p><strong>Topic Tags:</strong> {result.document.topic_tag || 'N/A'}</p>
+            <p><strong>Scope Key:</strong> {result.document.scope_key}</p>
             <p><strong>Source Type:</strong> {result.document.source_type}</p>
             <p><strong>Stored Filename:</strong> {result.document.stored_filename}</p>
             <p><strong>Extracted Filename:</strong> {result.document.extracted_filename}</p>
             <p><strong>Extension:</strong> {result.document.extension}</p>
             <p><strong>Size (bytes):</strong> {result.document.size_bytes}</p>
             <p><strong>Extracted Character Count:</strong> {result.document.extracted_char_count}</p>
+            <p><strong>Sentence Count:</strong> {result.document.sentence_count}</p>
+            <p><strong>Token Count:</strong> {result.document.token_count}</p>
 
             {result.document.original_filename && (
               <p><strong>Original Filename:</strong> {result.document.original_filename}</p>
-            )}
-
-            {result.document.char_count !== undefined && (
-              <p><strong>Character Count:</strong> {result.document.char_count}</p>
             )}
 
             {result.document.extraction_warning && (

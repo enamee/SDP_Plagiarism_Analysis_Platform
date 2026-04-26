@@ -6,7 +6,9 @@ import ComparePage from './pages/ComparePage'
 import CorpusCheckPage from './pages/CorpusCheckPage'
 import BatchCheckPage from './pages/BatchCheckPage'
 import GraphPage from './pages/GraphPage'
+import ComparisonDetailsPage from './pages/ComparisonDetailsPage'
 import ReportsPage from './pages/ReportsPage'
+import DebugLogsPage from './pages/DebugLogsPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
@@ -19,7 +21,9 @@ function App() {
         <Route path="/corpus-check" element={<CorpusCheckPage />} />
         <Route path="/batch-check" element={<BatchCheckPage />} />
         <Route path="/graph" element={<GraphPage />} />
+        <Route path="/comparison-details" element={<ComparisonDetailsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/debug" element={<DebugLogsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppLayout>

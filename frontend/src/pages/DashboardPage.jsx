@@ -6,7 +6,18 @@ import {
  getDashboardSummary,
  getDocuments,
  resetAllDemoData,
+ updateDocumentMetadata,
+ reprocessDocument,
 } from '../services/documentService'
+
+function isOcrSuccessMessage(extractionWarning) {
+ if (!extractionWarning) {
+   return false
+ }
+
+ const normalized = extractionWarning.toLowerCase()
+ return normalized.includes('ocr') && normalized.includes('text extracted')
+}
 
 function DashboardPage() {
  const [summary, setSummary] = useState(null)
@@ -15,7 +26,14 @@ function DashboardPage() {
  const [error, setError] = useState('')
  const [actionMessage, setActionMessage] = useState('')
  const [deletingId, setDeletingId] = useState(null)
+ const [reprocessingId, setReprocessingId] = useState(null)
  const [resettingAll, setResettingAll] = useState(false)
+ const [editingDocument, setEditingDocument] = useState(null)
+ const [editTitle, setEditTitle] = useState('')
+ const [editComparisonGroup, setEditComparisonGroup] = useState('')
+ const [editDocumentType, setEditDocumentType] = useState('')
+ const [editTopicTag, setEditTopicTag] = useState('')
+ const [savingMetadata, setSavingMetadata] = useState(false)
 
  async function loadDashboardData() {
    try {
@@ -79,6 +97,86 @@ function DashboardPage() {
      setError(err.message)
    } finally {
      setResettingAll(false)
+   }
+ }
+
+ const handleReprocessDocument = async (documentId, title) => {
+   const confirmed = window.confirm(
+     `Re-extract and reprocess "${title}" using the latest extraction logic?`
+   )
+
+   if (!confirmed) return
+
+   try {
+     setActionMessage('')
+     setReprocessingId(documentId)
+     const data = await reprocessDocument(documentId)
+     setActionMessage(data.message)
+     await loadDashboardData()
+   } catch (err) {
+     setError(err.message)
+   } finally {
+     setReprocessingId(null)
+   }
+ }
+
+ const handleOpenEdit = (doc) => {
+   setError('')
+   setActionMessage('')
+   setEditingDocument(doc)
+   setEditTitle(doc.title || '')
+   setEditComparisonGroup(doc.comparison_group || '')
+   setEditDocumentType(doc.document_type || '')
+   setEditTopicTag(doc.topic_tag || '')
+ }
+
+ const handleCloseEdit = () => {
+   setEditingDocument(null)
+   setEditTitle('')
+   setEditComparisonGroup('')
+   setEditDocumentType('')
+   setEditTopicTag('')
+ }
+
+ const handleSaveMetadata = async (event) => {
+   event.preventDefault()
+
+   if (!editingDocument) return
+
+   if (!editTitle.trim()) {
+     setError('Title is required.')
+     return
+   }
+
+   if (!editComparisonGroup.trim()) {
+     setError('Comparison group is required.')
+     return
+   }
+
+   if (!editDocumentType.trim()) {
+     setError('Document type is required.')
+     return
+   }
+
+   try {
+     setSavingMetadata(true)
+     setError('')
+     setActionMessage('')
+
+     const data = await updateDocumentMetadata(editingDocument.id, {
+       title: editTitle,
+       comparison_group: editComparisonGroup,
+       document_type: editDocumentType,
+       topic_tag: editTopicTag,
+     })
+
+     setActionMessage(data.message)
+     handleCloseEdit()
+     await loadDashboardData()
+   } catch (err) {
+     setError(err.message)
+   } finally {
+     setSavingMetadata(false)
    }
  }
 
@@ -210,8 +308,16 @@ function DashboardPage() {
                    <p className="text-sm text-slate-600 mb-2">
                      Type: {doc.source_type} | Extension: {doc.extension} | Extracted Characters: {doc.extracted_char_count}
                    </p>
+                   <p className="text-sm text-slate-600 mb-2">
+                     Comparison Group: {doc.comparison_group || 'N/A'} | Document Type: {doc.document_type || 'N/A'}
+                   </p>
+                   <p className="text-sm text-slate-600 mb-2">
+                     Topic Tags: {doc.topic_tag || 'N/A'}
+                   </p>
 
-                   {doc.extraction_warning ? (
+                   {isOcrSuccessMessage(doc.extraction_warning) ? (
+                     <StatusBadge label="Processed using OCR" type="success" />
+                   ) : doc.extraction_warning ? (
                      <StatusBadge label="Extraction Warning" type="warning" />
                    ) : (
                      <StatusBadge label="Processed" type="success" />
@@ -245,6 +351,9 @@ function DashboardPage() {
                <tr>
                  <th className="text-left px-4 py-3 border-b">ID</th>
                  <th className="text-left px-4 py-3 border-b">Title</th>
+                 <th className="text-left px-4 py-3 border-b">Comparison Group</th>
+                 <th className="text-left px-4 py-3 border-b">Document Type</th>
+                 <th className="text-left px-4 py-3 border-b">Topic Tags</th>
                  <th className="text-left px-4 py-3 border-b">Type</th>
                  <th className="text-left px-4 py-3 border-b">Extension</th>
                  <th className="text-left px-4 py-3 border-b">Extracted Characters</th>
@@ -259,11 +368,16 @@ function DashboardPage() {
                  <tr key={doc.id} className="hover:bg-slate-50">
                    <td className="px-4 py-3 border-b">{doc.id}</td>
                    <td className="px-4 py-3 border-b">{doc.title}</td>
+                   <td className="px-4 py-3 border-b">{doc.comparison_group || 'N/A'}</td>
+                   <td className="px-4 py-3 border-b">{doc.document_type || 'N/A'}</td>
+                   <td className="px-4 py-3 border-b">{doc.topic_tag || 'N/A'}</td>
                    <td className="px-4 py-3 border-b capitalize">{doc.source_type}</td>
                    <td className="px-4 py-3 border-b">{doc.extension}</td>
                    <td className="px-4 py-3 border-b">{doc.extracted_char_count}</td>
                    <td className="px-4 py-3 border-b">
-                     {doc.extraction_warning ? (
+                     {isOcrSuccessMessage(doc.extraction_warning) ? (
+                       <StatusBadge label="OCR Used" type="success" />
+                     ) : doc.extraction_warning ? (
                        <StatusBadge label="Yes" type="warning" />
                      ) : (
                        <StatusBadge label="No" type="success" />
@@ -273,14 +387,35 @@ function DashboardPage() {
                      {new Date(doc.created_at).toLocaleString()}
                    </td>
                    <td className="px-4 py-3 border-b">
-                     <button
-                       type="button"
-                       onClick={() => handleDeleteDocument(doc.id, doc.title)}
-                       disabled={deletingId === doc.id}
-                       className="rounded-lg bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-500 disabled:opacity-60"
-                     >
-                       {deletingId === doc.id ? 'Deleting...' : 'Delete'}
-                     </button>
+                     <div className="flex gap-2">
+                       <button
+                         type="button"
+                         onClick={() => handleOpenEdit(doc)}
+                         className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-100"
+                       >
+                         Edit
+                       </button>
+
+                       {doc.source_type === 'file' && (
+                         <button
+                           type="button"
+                           onClick={() => handleReprocessDocument(doc.id, doc.title)}
+                           disabled={reprocessingId === doc.id}
+                           className="rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-amber-50 hover:bg-amber-100 disabled:opacity-60"
+                         >
+                           {reprocessingId === doc.id ? 'Reprocessing...' : 'Reprocess'}
+                         </button>
+                       )}
+
+                       <button
+                         type="button"
+                         onClick={() => handleDeleteDocument(doc.id, doc.title)}
+                         disabled={deletingId === doc.id}
+                         className="rounded-lg bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-500 disabled:opacity-60"
+                       >
+                         {deletingId === doc.id ? 'Deleting...' : 'Delete'}
+                       </button>
+                     </div>
                    </td>
                  </tr>
                ))}
@@ -289,6 +424,84 @@ function DashboardPage() {
          </div>
        )}
      </div>
+
+     {editingDocument && (
+       <div className="fixed inset-0 bg-slate-950/40 flex items-center justify-center p-4 z-50">
+         <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+           <h3 className="text-xl font-semibold mb-4">
+             Edit Metadata - #{editingDocument.id}
+           </h3>
+
+           <form onSubmit={handleSaveMetadata} className="space-y-4">
+             <div>
+               <label className="block text-sm font-medium text-slate-700 mb-2">
+                 Document Title
+               </label>
+               <input
+                 type="text"
+                 value={editTitle}
+                 onChange={(e) => setEditTitle(e.target.value)}
+                 className="w-full rounded-lg border border-slate-300 px-4 py-2"
+               />
+             </div>
+
+             <div>
+               <label className="block text-sm font-medium text-slate-700 mb-2">
+                 Comparison Group
+               </label>
+               <input
+                 type="text"
+                 value={editComparisonGroup}
+                 onChange={(e) => setEditComparisonGroup(e.target.value)}
+                 className="w-full rounded-lg border border-slate-300 px-4 py-2"
+               />
+             </div>
+
+             <div>
+               <label className="block text-sm font-medium text-slate-700 mb-2">
+                 Document Type
+               </label>
+               <input
+                 type="text"
+                 value={editDocumentType}
+                 onChange={(e) => setEditDocumentType(e.target.value)}
+                 className="w-full rounded-lg border border-slate-300 px-4 py-2"
+               />
+             </div>
+
+             <div>
+               <label className="block text-sm font-medium text-slate-700 mb-2">
+                 Topic Tags
+               </label>
+               <input
+                 type="text"
+                 value={editTopicTag}
+                 onChange={(e) => setEditTopicTag(e.target.value)}
+                 className="w-full rounded-lg border border-slate-300 px-4 py-2"
+               />
+             </div>
+
+             <div className="flex justify-end gap-3 pt-2">
+               <button
+                 type="button"
+                 onClick={handleCloseEdit}
+                 className="rounded-lg border border-slate-300 px-4 py-2 bg-white hover:bg-slate-50"
+               >
+                 Cancel
+               </button>
+
+               <button
+                 type="submit"
+                 disabled={savingMetadata}
+                 className="rounded-lg bg-slate-900 text-white px-4 py-2 hover:bg-slate-800 disabled:opacity-60"
+               >
+                 {savingMetadata ? 'Saving...' : 'Save Metadata'}
+               </button>
+             </div>
+           </form>
+         </div>
+       </div>
+     )}
    </div>
  )
 }

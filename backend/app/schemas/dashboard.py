@@ -6,6 +6,9 @@ from pydantic import BaseModel
 class RecentDocumentItem(BaseModel):
    id: int
    title: str
+   comparison_group: str
+   document_type: str
+   topic_tag: str | None
    source_type: str
    extension: str
    extracted_char_count: int

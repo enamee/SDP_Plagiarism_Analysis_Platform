@@ -26,6 +26,25 @@ export async function getDocuments() {
  return data
 }
 
+export async function getShortlist(
+  documentId,
+  topK = 10,
+  sameScopeFirst = true,
+  scopeOnly = false
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/retrieval/shortlist/${documentId}?top_k=${Number(topK)}&same_scope_first=${sameScopeFirst}&scope_only=${scopeOnly}`
+  )
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.detail || 'Shortlist retrieval failed.')
+  }
+
+  return data
+}
+
 export async function getDashboardSummary() {
  const response = await fetch(`${API_BASE_URL}/api/dashboard/summary`)
  const data = await response.json()
@@ -76,7 +95,42 @@ export async function getDocumentById(documentId) {
  return data
 }
 
-export async function compareDocuments(documentAId, documentBId) {
+export async function updateDocumentMetadata(documentId, payload) {
+ const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/metadata`, {
+   method: 'PUT',
+   headers: {
+     'Content-Type': 'application/json',
+   },
+   body: JSON.stringify(payload),
+ })
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Failed to update document metadata.')
+ }
+
+ return data
+}
+
+export async function reprocessDocument(documentId) {
+ const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/reprocess`, {
+   method: 'PUT',
+   headers: {
+     'Content-Type': 'application/json',
+   },
+ })
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Failed to reprocess document.')
+ }
+
+ return data
+}
+
+export async function compareDocuments(documentAId, documentBId, useSemanticScoring = true) {
  const response = await fetch(`${API_BASE_URL}/api/compare/documents`, {
    method: 'POST',
    headers: {
@@ -85,6 +139,7 @@ export async function compareDocuments(documentAId, documentBId) {
    body: JSON.stringify({
      document_a_id: Number(documentAId),
      document_b_id: Number(documentBId),
+     use_semantic_scoring: Boolean(useSemanticScoring),
    }),
  })
 
@@ -97,21 +152,28 @@ export async function compareDocuments(documentAId, documentBId) {
  return data
 }
 
-export async function runCorpusCheck(documentId, topK = 5) {
- const response = await fetch(
-   `${API_BASE_URL}/api/corpus-check/${documentId}?top_k=${Number(topK)}`
- )
+export async function runCorpusCheck(
+  documentId,
+  resultTopK = 5,
+  shortlistTopK = 20,
+  sameScopeFirst = true,
+  scopeOnly = false,
+  useSemanticScoring = true
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/corpus-check/${documentId}?result_top_k=${Number(resultTopK)}&shortlist_top_k=${Number(shortlistTopK)}&same_scope_first=${sameScopeFirst}&scope_only=${scopeOnly}&use_semantic_scoring=${Boolean(useSemanticScoring)}`
+  )
 
- const data = await response.json()
+  const data = await response.json()
 
- if (!response.ok) {
-   throw new Error(data.detail || 'Corpus check failed.')
- }
+  if (!response.ok) {
+    throw new Error(data.detail || 'Corpus check failed.')
+  }
 
- return data
+  return data
 }
 
-export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs = 20) {
+export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs = 20, useSemanticScoring = true) {
  const response = await fetch(`${API_BASE_URL}/api/batch-check`, {
    method: 'POST',
    headers: {
@@ -121,6 +183,7 @@ export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs =
      document_ids: documentIds.map((id) => Number(id)),
      min_similarity: Number(minSimilarity),
      max_pairs: Number(maxPairs),
+     use_semantic_scoring: Boolean(useSemanticScoring),
    }),
  })
 
@@ -133,7 +196,7 @@ export async function runBatchCheck(documentIds, minSimilarity = 0.2, maxPairs =
  return data
 }
 
-export async function generateGraph(documentIds = [], minSimilarity = 0.2) {
+export async function generateGraph(documentIds = [], minSimilarity = 0.2, useSemanticScoring = true) {
  const response = await fetch(`${API_BASE_URL}/api/graph`, {
    method: 'POST',
    headers: {
@@ -142,6 +205,7 @@ export async function generateGraph(documentIds = [], minSimilarity = 0.2) {
    body: JSON.stringify({
      document_ids: documentIds.map((id) => Number(id)),
      min_similarity: Number(minSimilarity),
+     use_semantic_scoring: Boolean(useSemanticScoring),
    }),
  })
 
@@ -176,31 +240,40 @@ export async function runStyleShiftAnalysis(documentId, chunkSize = 5, anomalyTh
  return data
 }
 
-export async function downloadComparisonReport(documentAId, documentBId) {
- const response = await fetch(
-   `${API_BASE_URL}/api/reports/comparison?document_a_id=${Number(documentAId)}&document_b_id=${Number(documentBId)}`
- )
-
- if (!response.ok) {
-   let errorMessage = 'Report download failed.'
-   try {
-     const data = await response.json()
-     errorMessage = data.detail || errorMessage
-   } catch {
-     // ignore JSON parsing error
-   }
-   throw new Error(errorMessage)
- }
-
- const blob = await response.blob()
- const downloadUrl = window.URL.createObjectURL(blob)
+export async function downloadComparisonReport(documentAId, documentBId, useSemanticScoring = true) {
+ const downloadUrl = `${API_BASE_URL}/api/reports/comparison?document_a_id=${Number(documentAId)}&document_b_id=${Number(documentBId)}&use_semantic_scoring=${Boolean(useSemanticScoring)}`
 
  const link = document.createElement('a')
  link.href = downloadUrl
  link.download = `comparison_report_${documentAId}_${documentBId}.pdf`
+ link.target = '_blank'
+ link.rel = 'noopener noreferrer'
  document.body.appendChild(link)
  link.click()
  link.remove()
+}
 
- window.URL.revokeObjectURL(downloadUrl)
+export async function getDebugLogs(limit = 200) {
+  const response = await fetch(`${API_BASE_URL}/api/debug/logs?limit=${Number(limit)}`)
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to fetch debug logs.')
+  }
+
+  return data
+}
+
+export async function clearDebugLogs() {
+  const response = await fetch(`${API_BASE_URL}/api/debug/logs`, {
+    method: 'DELETE',
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to clear debug logs.')
+  }
+
+  return data
 }

@@ -5,7 +5,7 @@ from app.services.preprocessing import split_into_sentences
 
 
 def tokenize_words(text: str) -> list[str]:
-    return re.findall(r"[a-zA-Z0-9']+", text.lower())
+    return re.findall(r"[a-z0-9'\u0980-\u09ff]+", text.lower())
 
 
 def chunk_sentences(sentences: list[str], chunk_size: int) -> list[list[str]]:
@@ -56,7 +56,11 @@ def z_score(value: float, avg: float, spread: float) -> float:
 
 def analyze_style_shift(text: str, chunk_size: int = 5, anomaly_threshold: float = 1.2) -> dict:
     sentences = split_into_sentences(text)
-    sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
+    sentences = [
+        sentence.strip()
+        for sentence in sentences
+        if sentence.strip() and tokenize_words(sentence)
+    ]
 
     if len(sentences) < chunk_size:
         raise ValueError(

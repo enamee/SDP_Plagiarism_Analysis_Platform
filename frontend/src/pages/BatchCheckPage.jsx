@@ -1,17 +1,24 @@
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { getCachedPageState, setCachedPageState } from '../services/pageStateCache'
 import { getDocuments, runBatchCheck } from '../services/documentService'
 
+const PAGE_CACHE_KEY = 'batch-check'
+
 function BatchCheckPage() {
+ const cachedState = getCachedPageState(PAGE_CACHE_KEY) || {}
+
  const [documents, setDocuments] = useState([])
- const [selectedIds, setSelectedIds] = useState([])
- const [minSimilarity, setMinSimilarity] = useState(0.2)
- const [maxPairs, setMaxPairs] = useState(20)
+ const [selectedIds, setSelectedIds] = useState(cachedState.selectedIds || [])
+ const [minSimilarity, setMinSimilarity] = useState(cachedState.minSimilarity ?? 0.2)
+ const [maxPairs, setMaxPairs] = useState(cachedState.maxPairs ?? 20)
+ const [useSemanticScoring, setUseSemanticScoring] = useState(cachedState.useSemanticScoring ?? true)
  const [loadingDocuments, setLoadingDocuments] = useState(true)
  const [runningCheck, setRunningCheck] = useState(false)
  const [error, setError] = useState('')
- const [result, setResult] = useState(null)
+ const [result, setResult] = useState(cachedState.result || null)
 
  useEffect(() => {
    async function loadDocuments() {
@@ -28,6 +35,16 @@ function BatchCheckPage() {
 
    loadDocuments()
  }, [])
+
+ useEffect(() => {
+   setCachedPageState(PAGE_CACHE_KEY, {
+     selectedIds,
+     minSimilarity,
+     maxPairs,
+     useSemanticScoring,
+     result,
+   })
+ }, [maxPairs, minSimilarity, result, selectedIds, useSemanticScoring])
 
  const handleToggleDocument = (documentId) => {
    setSelectedIds((prev) =>
@@ -59,7 +76,7 @@ function BatchCheckPage() {
 
    try {
      setRunningCheck(true)
-     const data = await runBatchCheck(selectedIds, minSimilarity, maxPairs)
+     const data = await runBatchCheck(selectedIds, minSimilarity, maxPairs, useSemanticScoring)
      setResult(data)
    } catch (err) {
      setError(err.message)
@@ -154,6 +171,16 @@ function BatchCheckPage() {
              Selected documents: <strong>{selectedIds.length}</strong>
            </div>
 
+           <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+             <input
+               type="checkbox"
+               checked={useSemanticScoring}
+               onChange={(e) => setUseSemanticScoring(e.target.checked)}
+               className="h-4 w-4 rounded border-slate-300"
+             />
+             Use semantic scoring for pair comparison
+           </label>
+
            {error && (
              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
                {error}
@@ -210,7 +237,25 @@ function BatchCheckPage() {
                  >
                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                      <div>
-                       <p className="text-sm text-slate-500">Rank #{index + 1}</p>
+                       <Link
+                         to="/comparison-details"
+                         state={{
+                           comparisonDetails: {
+                             documentAId: pair.document_a_id,
+                             documentBId: pair.document_b_id,
+                             documentATitle: pair.document_a_title,
+                             documentBTitle: pair.document_b_title,
+                             overallSimilarity: pair.overall_similarity,
+                             overallPercentage: pair.overall_percentage,
+                             similarityLabel: pair.similarity_label,
+                             topMatches: pair.top_matches,
+                             useSemanticScoring,
+                           },
+                         }}
+                         className="text-sm text-blue-700 hover:underline"
+                       >
+                         Rank #{index + 1}
+                       </Link>
                        <h4 className="text-lg font-semibold">
                          {pair.document_a_title} ↔ {pair.document_b_title}
                        </h4>
@@ -232,6 +277,26 @@ function BatchCheckPage() {
                         }
                         />
 
+                       <Link
+                         to="/comparison-details"
+                         state={{
+                           comparisonDetails: {
+                             documentAId: pair.document_a_id,
+                             documentBId: pair.document_b_id,
+                             documentATitle: pair.document_a_title,
+                             documentBTitle: pair.document_b_title,
+                             overallSimilarity: pair.overall_similarity,
+                             overallPercentage: pair.overall_percentage,
+                             similarityLabel: pair.similarity_label,
+                             topMatches: pair.top_matches,
+                             useSemanticScoring,
+                           },
+                         }}
+                         className="inline-block mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
+                       >
+                         View Details
+                       </Link>
+
                      </div>
                    </div>
 
@@ -244,7 +309,7 @@ function BatchCheckPage() {
                        </p>
                      ) : (
                        <div className="space-y-3">
-                         {pair.top_matches.map((match, matchIndex) => (
+                         {pair.top_matches.slice(0, 3).map((match, matchIndex) => (
                            <div
                              key={matchIndex}
                              className="rounded-xl border border-slate-200 bg-white p-4"

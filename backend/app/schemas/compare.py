@@ -4,12 +4,21 @@ from pydantic import BaseModel
 class CompareDocumentsRequest(BaseModel):
    document_a_id: int
    document_b_id: int
+   use_semantic_scoring: bool | None = None
 
 
 class SentenceMatch(BaseModel):
    sentence_a: str
    sentence_b: str
    similarity: float
+
+
+class SimilarityDebug(BaseModel):
+   scorer_path: str
+   semantic_requested: bool | None = None
+   word_lexical_score: float
+   char_lexical_score: float
+   semantic_score: float | None = None
 
 
 class CompareDocumentsResponse(BaseModel):
@@ -21,3 +30,4 @@ class CompareDocumentsResponse(BaseModel):
    overall_percentage: float
    similarity_label: str
    top_matches: list[SentenceMatch]
+   debug: SimilarityDebug | None = None

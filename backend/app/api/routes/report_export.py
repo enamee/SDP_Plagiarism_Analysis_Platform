@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.models.document import DocumentRecord
 from app.services.report_generator import generate_comparison_report_pdf
 from app.services.similarity import compare_two_documents
+from app.core.logger import log_event
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
@@ -14,6 +15,7 @@ router = APIRouter(prefix="/api/reports", tags=["reports"])
 def download_comparison_report(
    document_a_id: int,
    document_b_id: int,
+    use_semantic_scoring: bool | None = None,
    db: Session = Depends(get_db),
 ):
    if document_a_id == document_b_id:
@@ -39,7 +41,10 @@ def download_comparison_report(
 
    comparison = compare_two_documents(
        document_a.extracted_text,
-       document_b.extracted_text
+       document_b.extracted_text,
+       sentence_top_k=None,
+       max_sentences_per_document=None,
+       use_semantic_scoring=use_semantic_scoring,
    )
 
    filepath, filename = generate_comparison_report_pdf(
@@ -48,6 +53,14 @@ def download_comparison_report(
        overall_percentage=comparison["overall_percentage"],
        similarity_label=comparison["similarity_label"],
        top_matches=comparison["top_matches"],
+   )
+
+   log_event(
+        "report_export.complete",
+        "Comparison PDF report generated",
+        document_a_id=document_a.id,
+        document_b_id=document_b.id,
+        filename=filename,
    )
 
    return FileResponse(

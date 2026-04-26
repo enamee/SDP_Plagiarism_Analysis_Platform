@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { getCachedPageState, setCachedPageState } from '../services/pageStateCache'
 import { generateGraph, getDocuments } from '../services/documentService'
 
 const SVG_WIDTH = 900
@@ -6,6 +9,7 @@ const SVG_HEIGHT = 600
 const CENTER_X = SVG_WIDTH / 2
 const CENTER_Y = SVG_HEIGHT / 2
 const RADIUS = 220
+const PAGE_CACHE_KEY = 'graph'
 
 function computeNodePositions(nodes) {
   if (nodes.length === 0) return []
@@ -24,13 +28,17 @@ function computeNodePositions(nodes) {
 }
 
 function GraphPage() {
+  const navigate = useNavigate()
+  const cachedState = getCachedPageState(PAGE_CACHE_KEY) || {}
+
   const [documents, setDocuments] = useState([])
-  const [selectedIds, setSelectedIds] = useState([])
-  const [minSimilarity, setMinSimilarity] = useState(0.2)
+  const [selectedIds, setSelectedIds] = useState(cachedState.selectedIds || [])
+  const [minSimilarity, setMinSimilarity] = useState(cachedState.minSimilarity ?? 0.2)
+  const [useSemanticScoring, setUseSemanticScoring] = useState(cachedState.useSemanticScoring ?? true)
   const [loadingDocuments, setLoadingDocuments] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
-  const [graphData, setGraphData] = useState(null)
+  const [graphData, setGraphData] = useState(cachedState.graphData || null)
 
   useEffect(() => {
     async function loadDocuments() {
@@ -47,6 +55,15 @@ function GraphPage() {
 
     loadDocuments()
   }, [])
+
+  useEffect(() => {
+    setCachedPageState(PAGE_CACHE_KEY, {
+      selectedIds,
+      minSimilarity,
+      useSemanticScoring,
+      graphData,
+    })
+  }, [graphData, minSimilarity, selectedIds, useSemanticScoring])
 
   const handleToggleDocument = (documentId) => {
     setSelectedIds((prev) =>
@@ -68,7 +85,7 @@ function GraphPage() {
 
     try {
       setGenerating(true)
-      const data = await generateGraph(selectedIds, minSimilarity)
+      const data = await generateGraph(selectedIds, minSimilarity, useSemanticScoring)
       setGraphData(data)
     } catch (err) {
       setError(err.message)
@@ -89,6 +106,26 @@ function GraphPage() {
     })
     return map
   }, [positionedNodes])
+
+  const buildComparisonDetailsState = (edge) => ({
+    comparisonDetails: {
+      documentAId: edge.source,
+      documentBId: edge.target,
+      documentATitle: edge.source_title,
+      documentBTitle: edge.target_title,
+      overallSimilarity: edge.similarity,
+      overallPercentage: edge.percentage,
+      similarityLabel: edge.similarity_label,
+      topMatches: edge.top_matches,
+      useSemanticScoring,
+    },
+  })
+
+  const handleEdgeClick = (edge) => {
+    navigate('/comparison-details', {
+      state: buildComparisonDetailsState(edge),
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -159,6 +196,16 @@ function GraphPage() {
               Selected documents: <strong>{selectedIds.length}</strong>
             </div>
 
+            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={useSemanticScoring}
+                onChange={(e) => setUseSemanticScoring(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              Use semantic scoring for graph edges
+            </label>
+
             {error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
                 {error}
@@ -223,9 +270,21 @@ function GraphPage() {
                         y1={sourceNode.y}
                         x2={targetNode.x}
                         y2={targetNode.y}
+                        stroke="transparent"
+                        strokeWidth={14}
+                        onClick={() => handleEdgeClick(edge)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <line
+                        x1={sourceNode.x}
+                        y1={sourceNode.y}
+                        x2={targetNode.x}
+                        y2={targetNode.y}
                         stroke="#64748b"
                         strokeWidth={1 + edge.similarity * 4}
                         opacity={0.35 + edge.similarity * 0.5}
+                        onClick={() => handleEdgeClick(edge)}
+                        style={{ cursor: 'pointer' }}
                       />
                       <text
                         x={midX}
@@ -233,6 +292,8 @@ function GraphPage() {
                         fontSize="11"
                         textAnchor="middle"
                         fill="#334155"
+                        onClick={() => handleEdgeClick(edge)}
+                        style={{ cursor: 'pointer' }}
                       >
                         {edge.percentage}%
                       </text>
@@ -290,11 +351,18 @@ function GraphPage() {
                     className="rounded-xl border border-slate-200 bg-slate-50 p-4"
                   >
                     <p className="font-medium">
-                      Document {edge.source} ↔ Document {edge.target}
+                      {edge.source_title} ↔ {edge.target_title}
                     </p>
                     <p className="text-sm text-slate-600">
                       Similarity: {edge.percentage}% ({edge.similarity})
                     </p>
+                    <Link
+                      to="/comparison-details"
+                      state={buildComparisonDetailsState(edge)}
+                      className="inline-block mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 bg-white hover:bg-slate-100"
+                    >
+                      View Details
+                    </Link>
                   </div>
                 ))}
               </div>
