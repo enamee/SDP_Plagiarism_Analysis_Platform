@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import {
@@ -22,6 +22,11 @@ function isOcrSuccessMessage(extractionWarning) {
 function DashboardPage() {
  const [summary, setSummary] = useState(null)
  const [documents, setDocuments] = useState([])
+ const [searchQuery, setSearchQuery] = useState('')
+ const [sortKey, setSortKey] = useState('created_at')
+ const [sortDirection, setSortDirection] = useState('desc')
+ const [pageSize, setPageSize] = useState(10)
+ const [currentPage, setCurrentPage] = useState(1)
  const [loading, setLoading] = useState(true)
  const [error, setError] = useState('')
  const [actionMessage, setActionMessage] = useState('')
@@ -34,6 +39,103 @@ function DashboardPage() {
  const [editDocumentType, setEditDocumentType] = useState('')
  const [editTopicTag, setEditTopicTag] = useState('')
  const [savingMetadata, setSavingMetadata] = useState(false)
+
+ const filteredDocuments = useMemo(() => {
+   const normalizedQuery = searchQuery.trim().toLowerCase()
+
+   if (!normalizedQuery) {
+     return documents
+   }
+
+   return documents.filter((doc) => {
+     const searchableValues = [
+       doc.id,
+       doc.title,
+       doc.comparison_group,
+       doc.document_type,
+       doc.topic_tag,
+       doc.source_type,
+       doc.extension,
+       doc.extracted_char_count,
+       doc.extraction_warning,
+       doc.created_at,
+     ]
+
+     return searchableValues.some((value) =>
+       String(value || '').toLowerCase().includes(normalizedQuery)
+     )
+   })
+ }, [documents, searchQuery])
+
+ const sortedDocuments = useMemo(() => {
+   const next = [...filteredDocuments]
+   const directionFactor = sortDirection === 'asc' ? 1 : -1
+
+   next.sort((a, b) => {
+     let aValue
+     let bValue
+
+     if (sortKey === 'id' || sortKey === 'extracted_char_count') {
+       aValue = Number(a[sortKey] || 0)
+       bValue = Number(b[sortKey] || 0)
+     } else if (sortKey === 'created_at') {
+       aValue = new Date(a.created_at || 0).getTime()
+       bValue = new Date(b.created_at || 0).getTime()
+     } else {
+       aValue = String(a[sortKey] || '').toLowerCase()
+       bValue = String(b[sortKey] || '').toLowerCase()
+     }
+
+     if (aValue < bValue) return -1 * directionFactor
+     if (aValue > bValue) return 1 * directionFactor
+     return 0
+   })
+
+   return next
+ }, [filteredDocuments, sortDirection, sortKey])
+
+ const totalPages = Math.max(1, Math.ceil(sortedDocuments.length / pageSize))
+
+ const paginatedDocuments = useMemo(() => {
+   const startIndex = (currentPage - 1) * pageSize
+   return sortedDocuments.slice(startIndex, startIndex + pageSize)
+ }, [currentPage, pageSize, sortedDocuments])
+
+ useEffect(() => {
+   setCurrentPage(1)
+ }, [searchQuery, sortKey, sortDirection, pageSize])
+
+ useEffect(() => {
+   if (currentPage > totalPages) {
+     setCurrentPage(totalPages)
+   }
+ }, [currentPage, totalPages])
+
+ const handleSort = (key) => {
+   if (sortKey === key) {
+     setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+     return
+   }
+
+   setSortKey(key)
+   setSortDirection('asc')
+ }
+
+ const renderSortableHeader = (key, label) => {
+   const isActive = sortKey === key
+   const icon = isActive ? (sortDirection === 'asc' ? '▲' : '▼') : ''
+
+   return (
+     <button
+       type="button"
+       onClick={() => handleSort(key)}
+       className="inline-flex items-center gap-1 font-medium hover:text-slate-900"
+     >
+       <span>{label}</span>
+       <span className="text-xs text-slate-500">{icon}</span>
+     </button>
+   )
+ }
 
  async function loadDashboardData() {
    try {
@@ -187,7 +289,7 @@ function DashboardPage() {
          <div>
            <h2 className="text-2xl font-bold mb-2">Dashboard</h2>
            <p className="text-slate-700">
-             Overview and management panel for the plagiarism analysis system.
+             Overview and management panel for the similarity analysis system.
            </p>
          </div>
 
@@ -345,82 +447,148 @@ function DashboardPage() {
        )}
 
        {!loading && documents.length > 0 && (
-         <div className="overflow-x-auto">
-           <table className="min-w-full border border-slate-200 rounded-lg overflow-hidden">
-             <thead className="bg-slate-100">
-               <tr>
-                 <th className="text-left px-4 py-3 border-b">ID</th>
-                 <th className="text-left px-4 py-3 border-b">Title</th>
-                 <th className="text-left px-4 py-3 border-b">Comparison Group</th>
-                 <th className="text-left px-4 py-3 border-b">Document Type</th>
-                 <th className="text-left px-4 py-3 border-b">Topic Tags</th>
-                 <th className="text-left px-4 py-3 border-b">Type</th>
-                 <th className="text-left px-4 py-3 border-b">Extension</th>
-                 <th className="text-left px-4 py-3 border-b">Extracted Characters</th>
-                 <th className="text-left px-4 py-3 border-b">Warning</th>
-                 <th className="text-left px-4 py-3 border-b">Created</th>
-                 <th className="text-left px-4 py-3 border-b">Action</th>
-               </tr>
-             </thead>
+        <div className="space-y-4 min-w-0">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+            <div className="w-full lg:max-w-2xl">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Search Documents
+              </label>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by title, group, type, topic, source, warning, or ID"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2"
+              />
+            </div>
 
-             <tbody>
-               {documents.map((doc) => (
-                 <tr key={doc.id} className="hover:bg-slate-50">
-                   <td className="px-4 py-3 border-b">{doc.id}</td>
-                   <td className="px-4 py-3 border-b">{doc.title}</td>
-                   <td className="px-4 py-3 border-b">{doc.comparison_group || 'N/A'}</td>
-                   <td className="px-4 py-3 border-b">{doc.document_type || 'N/A'}</td>
-                   <td className="px-4 py-3 border-b">{doc.topic_tag || 'N/A'}</td>
-                   <td className="px-4 py-3 border-b capitalize">{doc.source_type}</td>
-                   <td className="px-4 py-3 border-b">{doc.extension}</td>
-                   <td className="px-4 py-3 border-b">{doc.extracted_char_count}</td>
-                   <td className="px-4 py-3 border-b">
-                     {isOcrSuccessMessage(doc.extraction_warning) ? (
-                       <StatusBadge label="OCR Used" type="success" />
-                     ) : doc.extraction_warning ? (
-                       <StatusBadge label="Yes" type="warning" />
-                     ) : (
-                       <StatusBadge label="No" type="success" />
-                     )}
-                   </td>
-                   <td className="px-4 py-3 border-b">
-                     {new Date(doc.created_at).toLocaleString()}
-                   </td>
-                   <td className="px-4 py-3 border-b">
-                     <div className="flex gap-2">
-                       <button
-                         type="button"
-                         onClick={() => handleOpenEdit(doc)}
-                         className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-100"
-                       >
-                         Edit
-                       </button>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Rows per page
+              </label>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="rounded-lg border border-slate-300 px-3 py-2 bg-white"
+              >
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+          </div>
 
-                       {doc.source_type === 'file' && (
-                         <button
-                           type="button"
-                           onClick={() => handleReprocessDocument(doc.id, doc.title)}
-                           disabled={reprocessingId === doc.id}
-                           className="rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-amber-50 hover:bg-amber-100 disabled:opacity-60"
-                         >
-                           {reprocessingId === doc.id ? 'Reprocessing...' : 'Reprocess'}
-                         </button>
-                       )}
+          {sortedDocuments.length === 0 ? (
+            <EmptyState
+              title="No matching documents"
+              description="Try a different search query to see matching rows."
+            />
+          ) : (
+            <div className="w-full overflow-x-auto rounded-lg border border-slate-200">
+              <table className="min-w-[1400px] w-full border-collapse">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="text-left px-4 py-3 border-b">{renderSortableHeader('id', 'ID')}</th>
+                    <th className="text-left px-4 py-3 border-b">{renderSortableHeader('title', 'Title')}</th>
+                    <th className="text-left px-4 py-3 border-b">{renderSortableHeader('comparison_group', 'Comparison Group')}</th>
+                    <th className="text-left px-4 py-3 border-b">{renderSortableHeader('document_type', 'Document Type')}</th>
+                    <th className="text-left px-4 py-3 border-b">{renderSortableHeader('topic_tag', 'Topic Tags')}</th>
+                    <th className="text-left px-4 py-3 border-b">{renderSortableHeader('source_type', 'Type')}</th>
+                    <th className="text-left px-4 py-3 border-b">{renderSortableHeader('extension', 'Extension')}</th>
+                    <th className="text-left px-4 py-3 border-b">{renderSortableHeader('extracted_char_count', 'Extracted Characters')}</th>
+                    <th className="text-left px-4 py-3 border-b">Warning</th>
+                    <th className="text-left px-4 py-3 border-b">{renderSortableHeader('created_at', 'Created')}</th>
+                    <th className="text-left px-4 py-3 border-b">Action</th>
+                  </tr>
+                </thead>
 
-                       <button
-                         type="button"
-                         onClick={() => handleDeleteDocument(doc.id, doc.title)}
-                         disabled={deletingId === doc.id}
-                         className="rounded-lg bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-500 disabled:opacity-60"
-                       >
-                         {deletingId === doc.id ? 'Deleting...' : 'Delete'}
-                       </button>
-                     </div>
-                   </td>
-                 </tr>
-               ))}
-             </tbody>
-           </table>
+                <tbody>
+                  {paginatedDocuments.map((doc) => (
+                    <tr key={doc.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 border-b">{doc.id}</td>
+                      <td className="px-4 py-3 border-b">{doc.title}</td>
+                      <td className="px-4 py-3 border-b">{doc.comparison_group || 'N/A'}</td>
+                      <td className="px-4 py-3 border-b">{doc.document_type || 'N/A'}</td>
+                      <td className="px-4 py-3 border-b">{doc.topic_tag || 'N/A'}</td>
+                      <td className="px-4 py-3 border-b capitalize">{doc.source_type}</td>
+                      <td className="px-4 py-3 border-b">{doc.extension}</td>
+                      <td className="px-4 py-3 border-b">{doc.extracted_char_count}</td>
+                      <td className="px-4 py-3 border-b">
+                        {isOcrSuccessMessage(doc.extraction_warning) ? (
+                          <StatusBadge label="OCR Used" type="success" />
+                        ) : doc.extraction_warning ? (
+                          <StatusBadge label="Yes" type="warning" />
+                        ) : (
+                          <StatusBadge label="No" type="success" />
+                        )}
+                      </td>
+                      <td className="px-4 py-3 border-b whitespace-nowrap">
+                        {new Date(doc.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 border-b">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(doc)}
+                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm bg-white hover:bg-slate-100"
+                          >
+                            Edit
+                          </button>
+
+                          {doc.source_type === 'file' && (
+                            <button
+                              type="button"
+                              onClick={() => handleReprocessDocument(doc.id, doc.title)}
+                              disabled={reprocessingId === doc.id}
+                              className="rounded-lg border border-amber-300 px-3 py-1.5 text-sm bg-amber-50 hover:bg-amber-100 disabled:opacity-60"
+                            >
+                              {reprocessingId === doc.id ? 'Reprocessing...' : 'Reprocess'}
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDocument(doc.id, doc.title)}
+                            disabled={deletingId === doc.id}
+                            className="rounded-lg bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-500 disabled:opacity-60"
+                          >
+                            {deletingId === doc.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <p className="text-sm text-slate-600">
+              Page {currentPage} of {totalPages} | Showing {paginatedDocuments.length} of {sortedDocuments.length}
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border border-slate-300 px-4 py-2 bg-white hover:bg-slate-50 disabled:opacity-60"
+              >
+                Previous
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded-lg border border-slate-300 px-4 py-2 bg-white hover:bg-slate-50 disabled:opacity-60"
+              >
+                Next
+              </button>
+            </div>
+          </div>
          </div>
        )}
      </div>

@@ -3,11 +3,69 @@ from uuid import uuid4
 
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]   # backend/
 REPORT_DIR = BASE_DIR / "reports"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _first_existing_path(candidates: list[Path]) -> Path | None:
+   for candidate in candidates:
+       if candidate.exists():
+           return candidate
+   return None
+
+
+def _register_unicode_fonts() -> tuple[str, str, str]:
+   """
+   Register Unicode-capable fonts for PDF export.
+   Falls back to ReportLab built-ins if no TTF font is available.
+   """
+   local_font_dir = BASE_DIR / "assets" / "fonts"
+
+   regular_candidates = [
+       local_font_dir / "NotoSansBengali-Regular.ttf",
+       local_font_dir / "NotoSans-Regular.ttf",
+       Path("C:/Windows/Fonts/Nirmala.ttf"),
+       Path("C:/Windows/Fonts/vrinda.ttf"),
+       Path("/usr/share/fonts/truetype/noto/NotoSansBengali-Regular.ttf"),
+       Path("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"),
+       Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+       Path("/System/Library/Fonts/Supplemental/Noto Sans Bengali.ttf"),
+       Path("/System/Library/Fonts/Supplemental/Noto Sans.ttf"),
+   ]
+
+   bold_candidates = [
+       local_font_dir / "NotoSansBengali-Bold.ttf",
+       local_font_dir / "NotoSans-Bold.ttf",
+       Path("C:/Windows/Fonts/NirmalaB.ttf"),
+       Path("/usr/share/fonts/truetype/noto/NotoSansBengali-Bold.ttf"),
+       Path("/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf"),
+       Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+       Path("/System/Library/Fonts/Supplemental/Noto Sans Bold.ttf"),
+   ]
+
+   regular_path = _first_existing_path(regular_candidates)
+   bold_path = _first_existing_path(bold_candidates)
+
+   if not regular_path:
+       return "Helvetica", "Helvetica-Bold", "Helvetica-Oblique"
+
+   regular_font_name = "PlagiarismUnicodeRegular"
+   bold_font_name = "PlagiarismUnicodeBold"
+
+   try:
+       pdfmetrics.registerFont(TTFont(regular_font_name, str(regular_path)))
+       if bold_path:
+           pdfmetrics.registerFont(TTFont(bold_font_name, str(bold_path)))
+       else:
+           bold_font_name = regular_font_name
+       return regular_font_name, bold_font_name, regular_font_name
+   except Exception:
+       return "Helvetica", "Helvetica-Bold", "Helvetica-Oblique"
 
 
 def wrap_text(text: str, max_chars: int = 95) -> list[str]:
@@ -44,100 +102,101 @@ def draw_wrapped_text(pdf: canvas.Canvas, text: str, x: int, y: int, max_chars: 
 
 
 def generate_comparison_report_pdf(
-   document_a_title: str,
-   document_b_title: str,
-   overall_percentage: float,
-   similarity_label: str,
-   top_matches: list[dict],
+    document_a_title: str,
+    document_b_title: str,
+    overall_percentage: float,
+    similarity_label: str,
+    top_matches: list[dict],
 ) -> tuple[Path, str]:
-   filename = f"comparison_report_{uuid4().hex}.pdf"
-   filepath = REPORT_DIR / filename
+    filename = f"comparison_report_{uuid4().hex}.pdf"
+    filepath = REPORT_DIR / filename
 
-   pdf = canvas.Canvas(str(filepath), pagesize=A4)
-   width, height = A4
+    pdf = canvas.Canvas(str(filepath), pagesize=A4)
+    _, height = A4
 
-   margin_x = 50
-   y = height - 50
+    margin_x = 50
+    y = height - 50
+    body_font, bold_font, italic_font = _register_unicode_fonts()
 
-   # Title
-   pdf.setFont("Helvetica-Bold", 16)
-   pdf.drawString(margin_x, y, "Plagiarism Comparison Report")
-   y -= 30
+    # Title
+    pdf.setFont(bold_font, 16)
+    pdf.drawString(margin_x, y, "Plagiarism Comparison Report")
+    y -= 30
 
-   # Metadata
-   pdf.setFont("Helvetica", 11)
-   pdf.drawString(margin_x, y, f"Document A: {document_a_title}")
-   y -= 18
-   pdf.drawString(margin_x, y, f"Document B: {document_b_title}")
-   y -= 18
-   pdf.drawString(margin_x, y, f"Overall Similarity: {overall_percentage}%")
-   y -= 18
-   pdf.drawString(margin_x, y, f"Assessment: {similarity_label}")
-   y -= 30
+    # Metadata
+    pdf.setFont(body_font, 11)
+    pdf.drawString(margin_x, y, f"Document A: {document_a_title}")
+    y -= 18
+    pdf.drawString(margin_x, y, f"Document B: {document_b_title}")
+    y -= 18
+    pdf.drawString(margin_x, y, f"Overall Similarity: {overall_percentage}%")
+    y -= 18
+    pdf.drawString(margin_x, y, f"Assessment: {similarity_label}")
+    y -= 30
 
-   # Intro note
-   pdf.setFont("Helvetica-Oblique", 10)
-   y = draw_wrapped_text(
-       pdf,
-       "This report summarizes the comparison result and shows the top matching sentence pairs detected by the system.",
-       margin_x,
-       y,
-       max_chars=95,
-       line_height=14,
-   )
-   y -= 20
+    # Intro note
+    pdf.setFont(italic_font, 10)
+    y = draw_wrapped_text(
+        pdf,
+        "This report summarizes the comparison result and shows the top matching sentence pairs detected by the system.",
+        margin_x,
+        y,
+        max_chars=95,
+        line_height=14,
+    )
+    y -= 20
 
-   # Matches
-   pdf.setFont("Helvetica-Bold", 13)
-   pdf.drawString(margin_x, y, "Top Matching Sentences")
-   y -= 22
+    # Matches
+    pdf.setFont(bold_font, 13)
+    pdf.drawString(margin_x, y, "Top Matching Sentences")
+    y -= 22
 
-   if not top_matches:
-       pdf.setFont("Helvetica", 11)
-       pdf.drawString(margin_x, y, "No strong sentence-level matches were found.")
-   else:
-       for index, match in enumerate(top_matches, start=1):
-           if y < 140:
-               pdf.showPage()
-               y = height - 50
+    if not top_matches:
+        pdf.setFont(body_font, 11)
+        pdf.drawString(margin_x, y, "No strong sentence-level matches were found.")
+    else:
+        for index, match in enumerate(top_matches, start=1):
+            if y < 140:
+                pdf.showPage()
+                y = height - 50
 
-           pdf.setFont("Helvetica-Bold", 11)
-           pdf.drawString(
-               margin_x,
-               y,
-               f"Match #{index} - Similarity: {(match['similarity'] * 100):.2f}%"
-           )
-           y -= 18
+            pdf.setFont(bold_font, 11)
+            pdf.drawString(
+                margin_x,
+                y,
+                f"Match #{index} - Similarity: {(match['similarity'] * 100):.2f}%",
+            )
+            y -= 18
 
-           pdf.setFont("Helvetica-Bold", 10)
-           pdf.drawString(margin_x, y, "Sentence from Document A:")
-           y -= 14
+            pdf.setFont(bold_font, 10)
+            pdf.drawString(margin_x, y, "Sentence from Document A:")
+            y -= 14
 
-           pdf.setFont("Helvetica", 10)
-           y = draw_wrapped_text(
-               pdf,
-               match["sentence_a"],
-               margin_x + 10,
-               y,
-               max_chars=90,
-               line_height=13,
-           )
-           y -= 10
+            pdf.setFont(body_font, 10)
+            y = draw_wrapped_text(
+                pdf,
+                match["sentence_a"],
+                margin_x + 10,
+                y,
+                max_chars=90,
+                line_height=13,
+            )
+            y -= 10
 
-           pdf.setFont("Helvetica-Bold", 10)
-           pdf.drawString(margin_x, y, "Sentence from Document B:")
-           y -= 14
+            pdf.setFont(bold_font, 10)
+            pdf.drawString(margin_x, y, "Sentence from Document B:")
+            y -= 14
 
-           pdf.setFont("Helvetica", 10)
-           y = draw_wrapped_text(
-               pdf,
-               match["sentence_b"],
-               margin_x + 10,
-               y,
-               max_chars=90,
-               line_height=13,
-           )
-           y -= 20
+            pdf.setFont(body_font, 10)
+            y = draw_wrapped_text(
+                pdf,
+                match["sentence_b"],
+                margin_x + 10,
+                y,
+                max_chars=90,
+                line_height=13,
+            )
+            y -= 20
 
-   pdf.save()
-   return filepath, filename
+    pdf.save()
+    return filepath, filename

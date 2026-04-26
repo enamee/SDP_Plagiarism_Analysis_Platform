@@ -21,6 +21,13 @@ def generate_similarity_graph(payload: GraphRequest, db: Session = Depends(get_d
             detail="min_similarity must be between 0 and 1."
         )
 
+    if payload.sentence_match_threshold is not None:
+        if payload.sentence_match_threshold < 0 or payload.sentence_match_threshold > 1:
+            raise HTTPException(
+                status_code=400,
+                detail="sentence_match_threshold must be between 0 and 1.",
+            )
+
     log_event(
         "graph.start",
         "Similarity graph generation started",
@@ -75,8 +82,10 @@ def generate_similarity_graph(payload: GraphRequest, db: Session = Depends(get_d
             document_a.extracted_text,
             document_b.extracted_text,
             sentence_top_k=None,
+            sentence_threshold=payload.sentence_match_threshold,
             max_sentences_per_document=None,
             use_semantic_scoring=payload.use_semantic_scoring,
+            include_sentence_matches=False,
         )
         similarity = comparison["overall_similarity"]
 
@@ -89,7 +98,7 @@ def generate_similarity_graph(payload: GraphRequest, db: Session = Depends(get_d
                 "similarity": comparison["overall_similarity"],
                 "percentage": comparison["overall_percentage"],
                 "similarity_label": comparison["similarity_label"],
-                "top_matches": comparison["top_matches"],
+                "top_matches": [],
             })
 
     log_event(
