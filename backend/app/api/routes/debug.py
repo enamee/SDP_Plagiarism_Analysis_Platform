@@ -1,12 +1,13 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.core.admin_auth import require_admin_auth
 from app.core.logger import clear_log_file, log_event, read_log_lines
 
 router = APIRouter(prefix="/api/debug", tags=["debug"])
 
 
 @router.get("/logs")
-def get_debug_logs(limit: int = 200):
+def get_debug_logs(limit: int = 200, _token: str = Depends(require_admin_auth)):
     if limit < 1 or limit > 2000:
         raise HTTPException(
             status_code=400,
@@ -23,7 +24,7 @@ def get_debug_logs(limit: int = 200):
 
 
 @router.delete("/logs")
-def clear_debug_logs():
+def clear_debug_logs(_token: str = Depends(require_admin_auth)):
     clear_log_file()
     log_event(
         "debug.clear_logs",

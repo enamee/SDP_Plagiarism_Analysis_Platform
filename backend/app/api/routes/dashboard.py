@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.admin_auth import require_admin_auth
 from app.core.database import get_db
 from app.models.document import DocumentRecord
 from app.schemas.dashboard import DashboardSummaryResponse
@@ -18,7 +19,10 @@ def is_ocr_success_message(extraction_warning: str | None) -> bool:
 
 
 @router.get("/summary", response_model=DashboardSummaryResponse)
-def get_dashboard_summary(db: Session = Depends(get_db)):
+def get_dashboard_summary(
+    _token: str = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+):
    documents = db.scalars(
        select(DocumentRecord).order_by(DocumentRecord.created_at.desc())
    ).all()

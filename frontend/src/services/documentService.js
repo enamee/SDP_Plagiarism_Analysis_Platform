@@ -1,4 +1,79 @@
 const API_BASE_URL = 'http://127.0.0.1:8000'
+const ADMIN_TOKEN_STORAGE_KEY = 'admin_auth_token'
+
+function getAdminAuthHeaders() {
+ const token = localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY)
+ if (!token) {
+   return {}
+ }
+
+ return {
+   Authorization: `Bearer ${token}`,
+ }
+}
+
+export function isAdminAuthenticated() {
+ return Boolean(localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY))
+}
+
+export async function adminLogin(username, password) {
+ const response = await fetch(`${API_BASE_URL}/api/admin/auth/login`, {
+   method: 'POST',
+   headers: {
+     'Content-Type': 'application/json',
+   },
+   body: JSON.stringify({ username, password }),
+ })
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Admin login failed.')
+ }
+
+ localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, data.token)
+ return data
+}
+
+export async function adminLogout() {
+ const response = await fetch(`${API_BASE_URL}/api/admin/auth/logout`, {
+   method: 'POST',
+   headers: {
+     ...getAdminAuthHeaders(),
+   },
+ })
+
+ localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY)
+
+ if (!response.ok) {
+   return { success: false }
+ }
+
+ return { success: true }
+}
+
+export async function adminChangePassword(oldPassword, newPassword, confirmNewPassword) {
+ const response = await fetch(`${API_BASE_URL}/api/admin/auth/change-password`, {
+   method: 'POST',
+   headers: {
+     'Content-Type': 'application/json',
+     ...getAdminAuthHeaders(),
+   },
+   body: JSON.stringify({
+     old_password: oldPassword,
+     new_password: newPassword,
+     confirm_new_password: confirmNewPassword,
+   }),
+ })
+
+ const data = await response.json()
+
+ if (!response.ok) {
+   throw new Error(data.detail || 'Failed to change admin password.')
+ }
+
+ return data
+}
 
 export async function uploadDocument(formData) {
  const response = await fetch(`${API_BASE_URL}/api/documents/upload`, {
@@ -46,10 +121,14 @@ export async function getShortlist(
 }
 
 export async function getDashboardSummary() {
- const response = await fetch(`${API_BASE_URL}/api/dashboard/summary`)
- const data = await response.json()
+ const protectedResponse = await fetch(`${API_BASE_URL}/api/dashboard/summary`, {
+   headers: {
+     ...getAdminAuthHeaders(),
+   },
+ })
+ const data = await protectedResponse.json()
 
- if (!response.ok) {
+ if (!protectedResponse.ok) {
    throw new Error('Failed to fetch dashboard summary.')
  }
 
@@ -59,6 +138,9 @@ export async function getDashboardSummary() {
 export async function deleteDocumentById(documentId) {
  const response = await fetch(`${API_BASE_URL}/api/admin/documents/${documentId}`, {
    method: 'DELETE',
+   headers: {
+     ...getAdminAuthHeaders(),
+   },
  })
 
  const data = await response.json()
@@ -73,6 +155,9 @@ export async function deleteDocumentById(documentId) {
 export async function resetAllDemoData() {
  const response = await fetch(`${API_BASE_URL}/api/admin/reset-data`, {
    method: 'DELETE',
+   headers: {
+     ...getAdminAuthHeaders(),
+   },
  })
 
  const data = await response.json()
@@ -292,7 +377,11 @@ export async function downloadComparisonReport(
 }
 
 export async function getDebugLogs(limit = 200) {
-  const response = await fetch(`${API_BASE_URL}/api/debug/logs?limit=${Number(limit)}`)
+  const response = await fetch(`${API_BASE_URL}/api/debug/logs?limit=${Number(limit)}`, {
+    headers: {
+      ...getAdminAuthHeaders(),
+    },
+  })
   const data = await response.json()
 
   if (!response.ok) {
@@ -305,6 +394,9 @@ export async function getDebugLogs(limit = 200) {
 export async function clearDebugLogs() {
   const response = await fetch(`${API_BASE_URL}/api/debug/logs`, {
     method: 'DELETE',
+    headers: {
+      ...getAdminAuthHeaders(),
+    },
   })
 
   const data = await response.json()

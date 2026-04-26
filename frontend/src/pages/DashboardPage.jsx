@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import {
+ adminChangePassword,
+ adminLogout,
  deleteDocumentById,
  getDashboardSummary,
  getDocuments,
@@ -20,6 +23,7 @@ function isOcrSuccessMessage(extractionWarning) {
 }
 
 function DashboardPage() {
+ const navigate = useNavigate()
  const [summary, setSummary] = useState(null)
  const [documents, setDocuments] = useState([])
  const [searchQuery, setSearchQuery] = useState('')
@@ -39,6 +43,10 @@ function DashboardPage() {
  const [editDocumentType, setEditDocumentType] = useState('')
  const [editTopicTag, setEditTopicTag] = useState('')
  const [savingMetadata, setSavingMetadata] = useState(false)
+ const [oldPassword, setOldPassword] = useState('')
+ const [newPassword, setNewPassword] = useState('')
+ const [confirmNewPassword, setConfirmNewPassword] = useState('')
+ const [changingPassword, setChangingPassword] = useState(false)
 
  const filteredDocuments = useMemo(() => {
    const normalizedQuery = searchQuery.trim().toLowerCase()
@@ -222,6 +230,45 @@ function DashboardPage() {
    }
  }
 
+ const handleAdminLogout = async () => {
+   await adminLogout()
+   navigate('/admin/login', { replace: true })
+ }
+
+ const handleChangePassword = async (event) => {
+   event.preventDefault()
+   setActionMessage('')
+
+   if (!oldPassword) {
+     setError('Old password is required.')
+     return
+   }
+
+   if (!newPassword) {
+     setError('New password is required.')
+     return
+   }
+
+   if (newPassword !== confirmNewPassword) {
+     setError('New password and confirmation do not match.')
+     return
+   }
+
+   try {
+     setChangingPassword(true)
+     setError('')
+     const data = await adminChangePassword(oldPassword, newPassword, confirmNewPassword)
+     setActionMessage(data.message)
+     setOldPassword('')
+     setNewPassword('')
+     setConfirmNewPassword('')
+   } catch (err) {
+     setError(err.message)
+   } finally {
+     setChangingPassword(false)
+   }
+ }
+
  const handleOpenEdit = (doc) => {
    setError('')
    setActionMessage('')
@@ -284,6 +331,65 @@ function DashboardPage() {
 
  return (
    <div className="space-y-6">
+     <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
+       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+         <h2 className="text-xl font-semibold">Admin Controls</h2>
+         <div className="flex gap-3">
+           <button
+             type="button"
+             onClick={() => navigate('/admin/debug-logs')}
+             className="rounded-lg border border-slate-300 px-4 py-2 bg-white hover:bg-slate-50"
+           >
+             Open Debug Logs
+           </button>
+           <button
+             type="button"
+             onClick={handleAdminLogout}
+             className="rounded-lg bg-slate-900 text-white px-4 py-2 hover:bg-slate-800"
+           >
+             Logout Admin
+           </button>
+         </div>
+       </div>
+
+       <form onSubmit={handleChangePassword} className="grid md:grid-cols-4 gap-4 items-end">
+         <div>
+           <label className="block text-sm font-medium text-slate-700 mb-2">Old Password</label>
+           <input
+             type="password"
+             value={oldPassword}
+             onChange={(event) => setOldPassword(event.target.value)}
+             className="w-full rounded-lg border border-slate-300 px-4 py-2"
+           />
+         </div>
+         <div>
+           <label className="block text-sm font-medium text-slate-700 mb-2">New Password</label>
+           <input
+             type="password"
+             value={newPassword}
+             onChange={(event) => setNewPassword(event.target.value)}
+             className="w-full rounded-lg border border-slate-300 px-4 py-2"
+           />
+         </div>
+         <div>
+           <label className="block text-sm font-medium text-slate-700 mb-2">Confirm New Password</label>
+           <input
+             type="password"
+             value={confirmNewPassword}
+             onChange={(event) => setConfirmNewPassword(event.target.value)}
+             className="w-full rounded-lg border border-slate-300 px-4 py-2"
+           />
+         </div>
+         <button
+           type="submit"
+           disabled={changingPassword}
+           className="rounded-lg bg-emerald-700 text-white px-4 py-2 hover:bg-emerald-600 disabled:opacity-60"
+         >
+           {changingPassword ? 'Changing...' : 'Change Password'}
+         </button>
+       </form>
+     </div>
+
      <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
          <div>

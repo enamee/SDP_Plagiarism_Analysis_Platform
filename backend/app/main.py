@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
+from app.api.routes.admin_auth import router as admin_auth_router
 from app.api.routes.admin_tools import router as admin_tools_router
 from app.api.routes.batch_check import router as batch_check_router
 from app.api.routes.compare import router as compare_router
@@ -104,6 +105,7 @@ app.include_router(graph_router)
 app.include_router(style_shift_router)
 app.include_router(report_export_router)
 app.include_router(dashboard_router)
+app.include_router(admin_auth_router)
 app.include_router(admin_tools_router)
 app.include_router(retrieval_router)
 app.include_router(debug_router)

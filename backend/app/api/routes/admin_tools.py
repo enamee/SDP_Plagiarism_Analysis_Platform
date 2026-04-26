@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.admin_auth import require_admin_auth
 from app.core.database import engine, get_db
 from app.services.fts_index import clear_documents_fts, delete_document_from_fts
 from app.models.document import DocumentRecord
@@ -23,7 +24,11 @@ def safe_remove_file(path: Path):
 
 
 @router.delete("/documents/{document_id}")
-def delete_document(document_id: int, db: Session = Depends(get_db)):
+def delete_document(
+    document_id: int,
+    _token: str = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+):
    document = db.get(DocumentRecord, document_id)
 
    if not document:
@@ -54,7 +59,10 @@ def delete_document(document_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/reset-data")
-def reset_all_data(db: Session = Depends(get_db)):
+def reset_all_data(
+    _token: str = Depends(require_admin_auth),
+    db: Session = Depends(get_db),
+):
    documents = db.scalars(select(DocumentRecord)).all()
 
    deleted_documents = 0
@@ -76,7 +84,7 @@ def reset_all_data(db: Session = Depends(get_db)):
    deleted_reports = 0
    if REPORT_DIR.exists():
        for file_path in REPORT_DIR.iterdir():
-           if file_path.is_file() and file_path.suffix.lower() == ".pdf":
+           if file_path.is_file() and file_path.suffix.lower() in {".pdf", ".txt"}:
                safe_remove_file(file_path)
                deleted_reports += 1
 
