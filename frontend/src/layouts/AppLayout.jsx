@@ -22,7 +22,7 @@ function AppLayout({ children }) {
             <SidebarLink to="/corpus-check" label="Corpus Check" />
             <SidebarLink to="/batch-check" label="Batch Check" />
             <SidebarLink to="/graph" label="Similarity Graph" />
-            <SidebarLink to="/reports" label="Reports" />
+            <SidebarLink to="/style-shift-analysis" label="Style Shift Analysis" />
             <SidebarLink to="/debug" label="Debug Logs" />
           </nav>
         </aside>

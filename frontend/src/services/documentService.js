@@ -283,7 +283,7 @@ export async function downloadComparisonReport(
 
  const link = document.createElement('a')
  link.href = downloadUrl
- link.download = `comparison_report_${documentAId}_${documentBId}.pdf`
+ link.download = `comparison_report_${documentAId}_${documentBId}.txt`
  link.target = '_blank'
  link.rel = 'noopener noreferrer'
  document.body.appendChild(link)

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.document import DocumentRecord
-from app.services.report_generator import generate_comparison_report_pdf
+from app.services.report_generator import generate_comparison_report_txt
 from app.services.similarity import compare_two_documents
 from app.core.logger import log_event
 
@@ -56,7 +56,7 @@ def download_comparison_report(
        use_semantic_scoring=use_semantic_scoring,
    )
 
-   filepath, filename = generate_comparison_report_pdf(
+   filepath, filename = generate_comparison_report_txt(
        document_a_title=document_a.title,
        document_b_title=document_b.title,
        overall_percentage=comparison["overall_percentage"],
@@ -66,7 +66,7 @@ def download_comparison_report(
 
    log_event(
         "report_export.complete",
-        "Comparison PDF report generated",
+       "Comparison text report generated",
         document_a_id=document_a.id,
         document_b_id=document_b.id,
         filename=filename,
@@ -75,5 +75,5 @@ def download_comparison_report(
    return FileResponse(
        path=str(filepath),
        filename=filename,
-       media_type="application/pdf",
+       media_type="text/plain; charset=utf-8",
    )

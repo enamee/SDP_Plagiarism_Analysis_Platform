@@ -4,9 +4,9 @@ import EmptyState from '../components/EmptyState'
 import StatusBadge from '../components/StatusBadge'
 import { getCachedPageState, setCachedPageState } from '../services/pageStateCache'
 
-const PAGE_CACHE_KEY = 'reports'
+const PAGE_CACHE_KEY = 'style-shift-analysis'
 
-function ReportsPage() {
+function StyleShiftAnalysisPage() {
   const cachedState = getCachedPageState(PAGE_CACHE_KEY) || {}
   const [documents, setDocuments] = useState([])
   const [selectedDocumentId, setSelectedDocumentId] = useState(cachedState.selectedDocumentId || '')
@@ -85,7 +85,7 @@ function ReportsPage() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
-        <h2 className="text-2xl font-bold mb-3">Reports</h2>
+        <h2 className="text-2xl font-bold mb-3">Style Shift Analysis</h2>
         <p className="text-slate-700 mb-6">
           Run intrinsic style-shift analysis to detect suspicious internal writing changes inside a document.
         </p>
@@ -288,4 +288,4 @@ function ReportsPage() {
   )
 }
 
-export default ReportsPage
+export default StyleShiftAnalysisPage

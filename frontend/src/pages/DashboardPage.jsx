@@ -372,14 +372,14 @@ function DashboardPage() {
          <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
            <h4 className="font-semibold mb-2">2. Run Analysis</h4>
            <p className="text-sm text-slate-600">
-             Use Compare, Corpus Check, Batch Check, Graph, and Reports pages.
+             Use Compare, Corpus Check, Batch Check, Graph, and Style Shift Analysis pages.
            </p>
          </div>
 
          <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
            <h4 className="font-semibold mb-2">3. Export & Explain</h4>
            <p className="text-sm text-slate-600">
-             Export PDF report and explain how retrieval, matching, and style-shift work.
+             Export text report and explain how retrieval, matching, and style-shift work.
            </p>
          </div>
        </div>

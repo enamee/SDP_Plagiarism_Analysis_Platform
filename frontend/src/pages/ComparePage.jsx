@@ -590,7 +590,7 @@ function ComparePage() {
                disabled={downloadingReport}
                className="rounded-lg bg-emerald-700 text-white px-5 py-2.5 hover:bg-emerald-600 disabled:opacity-60"
              >
-               {downloadingReport ? 'Generating PDF...' : 'Export PDF Report'}
+                {downloadingReport ? 'Generating TXT...' : 'Export TXT Report'}
              </button>
            </div>
          </div>

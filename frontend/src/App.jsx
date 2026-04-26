@@ -7,7 +7,7 @@ import CorpusCheckPage from './pages/CorpusCheckPage'
 import BatchCheckPage from './pages/BatchCheckPage'
 import GraphPage from './pages/GraphPage'
 import ComparisonDetailsPage from './pages/ComparisonDetailsPage'
-import ReportsPage from './pages/ReportsPage'
+import StyleShiftAnalysisPage from './pages/ReportsPage'
 import DebugLogsPage from './pages/DebugLogsPage'
 import NotFoundPage from './pages/NotFoundPage'
 
@@ -22,7 +22,7 @@ function App() {
         <Route path="/batch-check" element={<BatchCheckPage />} />
         <Route path="/graph" element={<GraphPage />} />
         <Route path="/comparison-details" element={<ComparisonDetailsPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/style-shift-analysis" element={<StyleShiftAnalysisPage />} />
         <Route path="/debug" element={<DebugLogsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
